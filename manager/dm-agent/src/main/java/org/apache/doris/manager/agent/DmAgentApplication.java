@@ -31,6 +31,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.system.ApplicationHome;
 
+import java.util.List;
+
 @SpringBootApplication
 public class DmAgentApplication {
     private static final Logger log = LoggerFactory.getLogger(DmAgentApplication.class);
@@ -53,8 +55,8 @@ public class DmAgentApplication {
         AgentContext.init(option.role, option.agentIp, Integer.valueOf(agentPort), option.agentServer, option.dorisHomeDir, agentInstallDir);
 
 
-        String role = AgentRole.queryRole();
-        AgentContext.setRole(Role.findByName(role));
+        List<String> role = AgentRole.queryRole();
+        //AgentContext.setRole(Role.findByName(role));
 
         // register agent
         boolean register = AgentRegister.register();

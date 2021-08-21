@@ -45,7 +45,7 @@ public class AgentCache {
     }
 
     private void loadAgents() {
-        List<AgentEntity> agentEntities = serverDao.queryAgentNodes(new ArrayList<>());
+        List<AgentEntity> agentEntities = serverDao.queryAgentNodes();
         if (agentEntities != null && !agentEntities.isEmpty()) {
             Map<String, AgentEntity> agentsMap = agentEntities.stream().collect(Collectors.toMap(AgentEntity::getHost, v -> v));
             hostAgentCache.putAll(agentsMap);

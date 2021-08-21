@@ -14,41 +14,48 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.doris.manager.server.service;
-
-
-import org.apache.doris.manager.common.domain.RResult;
-import org.apache.doris.manager.server.entity.AgentEntity;
-import org.apache.doris.manager.server.model.req.SshInfo;
-
-import java.util.List;
+package org.apache.doris.manager.server.model.req;
 
 /**
- * server
- */
-public interface ServerProcess {
+ * agent role register
+ **/
+public class AgentReg {
+    private String host;
 
+    private String role;
 
-    void initAgent(SshInfo sshInfo);
+    private String installDir;
 
-    /**
-     * install agent
-     */
-    void startAgent(SshInfo sshInfo);
+    public AgentReg() {
+    }
 
-    /**
-     * agent list
-     */
-    List<AgentEntity> agentList();
+    public AgentReg(String host, String role,String installDir) {
+        this.host = host;
+        this.role = role;
+        this.installDir = installDir;
+    }
 
-    /**
-     * update agent status batch
-     */
-    int updateBatchAgentStatus(List<AgentEntity> agents);
+    public String getHost() {
+        return host;
+    }
 
-    List<String> agentRole(String host);
+    public void setHost(String host) {
+        this.host = host;
+    }
 
-    void heartbeat(String host, Integer port);
+    public String getRole() {
+        return role;
+    }
 
-    boolean register(String host, Integer port);
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getInstallDir() {
+        return installDir;
+    }
+
+    public void setInstallDir(String installDir) {
+        this.installDir = installDir;
+    }
 }

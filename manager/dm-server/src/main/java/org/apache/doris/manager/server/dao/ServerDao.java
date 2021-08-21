@@ -16,6 +16,7 @@
 // under the License.
 package org.apache.doris.manager.server.dao;
 
+
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
 
@@ -26,9 +27,11 @@ import java.util.List;
  **/
 public interface ServerDao {
 
+    List<AgentEntity> queryAgentNodes();
+
     List<AgentEntity> queryAgentNodes(List<String> hosts);
 
-    AgentEntity agentInfo(String host, Integer port);
+    AgentEntity agentInfo(String host);
 
     int refreshAgentStatus(String host, Integer port);
 
@@ -36,9 +39,14 @@ public interface ServerDao {
 
     int updateBatchAgentStatus(List<AgentEntity> agents);
 
-    int insertAgentRole(List<AgentRoleEntity> agentRoles);
+    int registerAgentRoles(List<AgentRoleEntity> agentRoles);
 
-    String agentRole(String host);
+    int registerAgentRole(AgentRoleEntity agentRole);
+
+    List<AgentRoleEntity> agentRoles(String host, String role);
+
+    List<AgentRoleEntity> agentRoles(String host);
 
     List<AgentRoleEntity> agentRoles();
+
 }

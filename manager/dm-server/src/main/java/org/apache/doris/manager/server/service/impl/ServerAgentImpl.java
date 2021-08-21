@@ -31,6 +31,7 @@ import org.apache.doris.manager.server.dao.ServerDao;
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
 import org.apache.doris.manager.server.exceptions.ServerException;
+import org.apache.doris.manager.server.model.req.AgentReg;
 import org.apache.doris.manager.server.model.req.DorisExec;
 import org.apache.doris.manager.server.model.req.DorisExecReq;
 import org.apache.doris.manager.server.model.req.DorisInstallReq;
@@ -38,12 +39,14 @@ import org.apache.doris.manager.server.model.req.InstallInfo;
 import org.apache.doris.manager.server.model.req.TaskInfoReq;
 import org.apache.doris.manager.server.model.req.TaskLogReq;
 import org.apache.doris.manager.server.service.ServerAgent;
+import org.apache.doris.manager.server.util.JdbcUtil;
 import org.apache.doris.manager.server.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -87,7 +90,7 @@ public class ServerAgentImpl implements ServerAgent {
             results.add(result.getData());
         }
         //save agent role
-        serverDao.insertAgentRole(agentRoles);
+        serverDao.registerAgentRoles(agentRoles);
         return results;
     }
 
@@ -177,4 +180,38 @@ public class ServerAgentImpl implements ServerAgent {
         return agent.getPort();
     }
 
+    @Override
+    public void joinBe(List<String> hosts) {
+        List<AgentRoleEntity> agentRoles = serverDao.agentRoles(null, Role.FE.name());
+        if (agentRoles.isEmpty()) {
+            return;
+        }
+        AgentRoleEntity agentRole = agentRoles.get(0);
+        AgentEntity agentEntity = agentCache.agentInfo(agentRole.getHost());
+        //fetch agent conf
+        //agentRest.reqestConf();
+        Connection conn = null;
+        try {
+            conn = JdbcUtil.getConn("", "", "root", "", "");
+        } catch (Exception e) {
+            throw new ServerException("Failed to get fe's jdbc connection");
+        }
+        List<Boolean> result = new ArrayList<>();
+        for (String be : hosts) {
+            //query be's doris port
+            boolean flag = JdbcUtil.execute(conn, "ALTER SYSTEM ADD BACKEND " + be + ":" + "9030");
+            result.add(flag);
+        }
+        RResult.success(result);
+    }
+
+    @Override
+    public boolean register(AgentReg agentReg) {
+        AgentEntity agent = serverDao.agentInfo(agentReg.getHost());
+        if(agent == null){
+            throw new ServerException("can not find " + agentReg.getHost() + " agent");
+        }
+        int cnt = serverDao.registerAgentRole(new AgentRoleEntity(agentReg.getHost(), agentReg.getRole(), agentReg.getInstallDir()));
+        return cnt > 0;
+    }
 }

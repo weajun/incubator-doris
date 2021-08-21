@@ -17,6 +17,7 @@
 package org.apache.doris.manager.server.controller;
 
 import org.apache.doris.manager.common.domain.RResult;
+import org.apache.doris.manager.server.model.req.AgentReg;
 import org.apache.doris.manager.server.model.req.DorisExecReq;
 import org.apache.doris.manager.server.model.req.DorisInstallReq;
 import org.apache.doris.manager.server.model.req.TaskInfoReq;
@@ -27,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 
 @RestController
@@ -76,4 +79,21 @@ public class AgentController {
         return serverAgent.taskErrlog(taskInfo);
     }
 
+    /**
+     * join be to cluster
+     */
+    @RequestMapping(value = "/joinBe", method = RequestMethod.POST)
+    public RResult joinBe(@RequestBody List<String> hosts) {
+        serverAgent.joinBe(hosts);
+        return RResult.success();
+    }
+
+    /**
+     * register role service (be/fe)
+     */
+    @RequestMapping(value = "/register", method = RequestMethod.POST)
+    public RResult register(@RequestBody AgentReg agentReg) {
+        boolean register = serverAgent.register(agentReg);
+        return RResult.success(register);
+    }
 }

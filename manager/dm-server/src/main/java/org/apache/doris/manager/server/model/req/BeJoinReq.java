@@ -14,41 +14,22 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.doris.manager.server.service;
-
-
-import org.apache.doris.manager.common.domain.RResult;
-import org.apache.doris.manager.server.entity.AgentEntity;
-import org.apache.doris.manager.server.model.req.SshInfo;
+package org.apache.doris.manager.server.model.req;
 
 import java.util.List;
 
 /**
- * server
- */
-public interface ServerProcess {
+ * be join cluster req
+ **/
+public class BeJoinReq {
 
+    private List<AgentCommon> list;
 
-    void initAgent(SshInfo sshInfo);
+    public List<AgentCommon> getList() {
+        return list;
+    }
 
-    /**
-     * install agent
-     */
-    void startAgent(SshInfo sshInfo);
-
-    /**
-     * agent list
-     */
-    List<AgentEntity> agentList();
-
-    /**
-     * update agent status batch
-     */
-    int updateBatchAgentStatus(List<AgentEntity> agents);
-
-    List<String> agentRole(String host);
-
-    void heartbeat(String host, Integer port);
-
-    boolean register(String host, Integer port);
+    public void setList(List<AgentCommon> list) {
+        this.list = list;
+    }
 }

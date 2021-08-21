@@ -16,25 +16,30 @@
 // under the License.
 package org.apache.doris.manager.agent.register;
 
+import com.alibaba.fastjson.JSON;
+import org.apache.doris.manager.agent.util.Request;
 import org.apache.doris.manager.common.domain.RResult;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * query agent role
  **/
-public class AgentRole extends BaseRequest {
+public class AgentRole {
 
-    public static String queryRole() {
+    public static List<String> queryRole() {
         String requestUrl = "http://" + AgentContext.getAgentServer() + "/server/agentRole";
         Map<String, Object> map = new HashMap<>();
         map.put("host", AgentContext.getAgentIp());
 
-        RResult resultResp = sendRequest(requestUrl, map);
-        if (resultResp == null) {
+        String result = Request.sendPostRequest(requestUrl, map);
+        RResult resultResp = JSON.parseObject(result, RResult.class);
+        if (resultResp == null || resultResp.getCode() != 0) {
             return null;
         }
-        return String.valueOf(resultResp.getData());
+        Object data = resultResp.getData();
+        return (List<String>)data;
     }
 }

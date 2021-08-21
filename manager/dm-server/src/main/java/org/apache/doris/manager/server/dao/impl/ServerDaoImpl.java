@@ -16,10 +16,13 @@
 // under the License.
 package org.apache.doris.manager.server.dao.impl;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.doris.manager.server.constants.AgentStatus;
 import org.apache.doris.manager.server.dao.ServerDao;
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
+import org.apache.doris.manager.server.mapper.AgentEntityMapper;
+import org.apache.doris.manager.server.mapper.AgentRoleEntityMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,7 +32,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -42,6 +44,11 @@ public class ServerDaoImpl implements ServerDao {
     private JdbcTemplate jdbcTemplate;
 
     @Override
+    public List<AgentEntity> queryAgentNodes() {
+        return queryAgentNodes(new ArrayList<>());
+    }
+
+    @Override
     public List<AgentEntity> queryAgentNodes(List<String> hosts) {
         String sql = "select id,host,port,status,register_time,last_reported_time" +
                 " from t_agent ";
@@ -51,30 +58,14 @@ public class ServerDaoImpl implements ServerDao {
             sql = String.format(sql, inSql);
         }
         List<AgentEntity> agentEntities = jdbcTemplate.query(
-                sql, (resultSet, i) -> {
-                    Integer id = resultSet.getInt("id");
-                    String ht = resultSet.getString("host");
-                    Integer pt = resultSet.getInt("port");
-                    String status = resultSet.getString("status");
-                    Date registerTime = resultSet.getTimestamp("register_time");
-                    Date lastReportedTime = resultSet.getTimestamp("last_reported_time");
-                    return new AgentEntity(id, ht, pt, status, registerTime, lastReportedTime);
-                }, hosts.toArray());
+                sql, new AgentEntityMapper(), hosts.toArray());
         return agentEntities;
     }
 
     @Override
-    public AgentEntity agentInfo(String host, Integer port) {
-        String sql = "select id,host,port,status,register_time,last_reported_time from t_agent where host = ? and port = ?";
-        List<AgentEntity> agents = jdbcTemplate.query(sql, (resultSet, i) -> {
-            Integer id = resultSet.getInt("id");
-            String ht = resultSet.getString("host");
-            Integer pt = resultSet.getInt("port");
-            String status = resultSet.getString("status");
-            Date registerTime = resultSet.getTimestamp("register_time");
-            Date lastReportedTime = resultSet.getTimestamp("last_reported_time");
-            return new AgentEntity(id, ht, pt, status, registerTime, lastReportedTime);
-        }, host, port);
+    public AgentEntity agentInfo(String host) {
+        String sql = "select id,host,port,status,register_time,last_reported_time from t_agent where host = ? ";
+        List<AgentEntity> agents = jdbcTemplate.query(sql, new AgentEntityMapper(), host);
         if (agents != null && !agents.isEmpty()) {
             return agents.get(0);
         }
@@ -111,7 +102,7 @@ public class ServerDaoImpl implements ServerDao {
     }
 
     @Override
-    public int insertAgentRole(List<AgentRoleEntity> agentRoles) {
+    public int registerAgentRoles(List<AgentRoleEntity> agentRoles) {
         String sql = "insert into t_agent_role(host,role,install_dir) values(?,?,?)";
         int[] i = jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -129,32 +120,41 @@ public class ServerDaoImpl implements ServerDao {
     }
 
     @Override
-    public String agentRole(String host) {
-        String sql = "select host,role,install_dir from t_agent_role where host = ?";
-        List<AgentRoleEntity> agentRoles = jdbcTemplate.query(sql, (resultSet, i) -> {
-            String ht = resultSet.getString("host");
-            String role = resultSet.getString("role");
-            String installDir = resultSet.getString("install_dir");
-            return new AgentRoleEntity(ht, role, installDir);
-        }, host);
-        if (agentRoles != null && !agentRoles.isEmpty()) {
-            return agentRoles.get(0).getRole();
-        }
-        return null;
+    public int registerAgentRole(AgentRoleEntity agentRole) {
+        int cnt = jdbcTemplate.update(" insert into t_agent_role(host,role,install_dir) values(?,?,?)", ps -> {
+            ps.setString(1, agentRole.getHost());
+            ps.setString(2, agentRole.getRole());
+            ps.setString(3, agentRole.getInstallDir());
+        });
+        return cnt;
     }
 
     @Override
-    public List<AgentRoleEntity> agentRoles() {
-        String sql = "select host,role,install_dir from t_agent_role";
-        List<AgentRoleEntity> agentRoles = jdbcTemplate.query(sql, (resultSet, i) -> {
-            String ht = resultSet.getString("host");
-            String role = resultSet.getString("role");
-            String installDir = resultSet.getString("install_dir");
-            return new AgentRoleEntity(ht, role, installDir);
-        });
+    public List<AgentRoleEntity> agentRoles(String host, String role) {
+        String sql = "select host,role,install_dir from t_agent_role where 1=1 ";
+        List<Object> params = new ArrayList<>();
+        if (StringUtils.isNotBlank(host)) {
+            sql += "and host = ? ";
+            params.add(host);
+        }
+        if (StringUtils.isNotBlank(role)) {
+            sql += "and role = ? ";
+            params.add(role);
+        }
+        List<AgentRoleEntity> agentRoles = jdbcTemplate.query(sql, new AgentRoleEntityMapper(), params.toArray());
         if (agentRoles == null) {
             return new ArrayList<>();
         }
         return agentRoles;
+    }
+
+    @Override
+    public List<AgentRoleEntity> agentRoles(String host) {
+        return agentRoles(host, null);
+    }
+
+    @Override
+    public List<AgentRoleEntity> agentRoles() {
+        return agentRoles(null, null);
     }
 }

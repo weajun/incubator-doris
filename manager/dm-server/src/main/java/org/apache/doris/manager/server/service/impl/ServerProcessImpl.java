@@ -16,11 +16,14 @@
 // under the License.
 package org.apache.doris.manager.server.service.impl;
 
+
+import org.apache.commons.io.FileUtils;
 import org.apache.doris.manager.common.domain.RResult;
 import org.apache.doris.manager.server.agent.AgentCache;
 import org.apache.doris.manager.server.constants.AgentStatus;
 import org.apache.doris.manager.server.dao.ServerDao;
 import org.apache.doris.manager.server.entity.AgentEntity;
+import org.apache.doris.manager.server.entity.AgentRoleEntity;
 import org.apache.doris.manager.server.exceptions.ServerException;
 import org.apache.doris.manager.server.model.req.SshInfo;
 import org.apache.doris.manager.server.service.ServerProcess;
@@ -28,7 +31,6 @@ import org.apache.doris.manager.server.shell.SCP;
 import org.apache.doris.manager.server.shell.SSH;
 import org.apache.doris.manager.server.util.Preconditions;
 import org.apache.doris.manager.server.util.PropertiesUtil;
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,10 +49,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.manager.server.constants.Constants.KEY_DORIS_AGENT_INSTALL_DIR;
 import static org.apache.doris.manager.server.constants.Constants.KEY_DORIS_AGENT_START_SCRIPT;
 import static org.apache.doris.manager.server.constants.Constants.KEY_SERVER_PORT;
+
 
 /**
  * server
@@ -100,7 +104,7 @@ public class ServerProcessImpl implements ServerProcess {
 
     @Override
     public List<AgentEntity> agentList() {
-        List<AgentEntity> agentEntities = serverDao.queryAgentNodes(new ArrayList<>());
+        List<AgentEntity> agentEntities = serverDao.queryAgentNodes();
         return agentEntities;
     }
 
@@ -110,8 +114,10 @@ public class ServerProcessImpl implements ServerProcess {
     }
 
     @Override
-    public String agentRole(String host) {
-        return serverDao.agentRole(host);
+    public List<String> agentRole(String host) {
+        List<AgentRoleEntity> agentRoles = serverDao.agentRoles(host, null);
+        List<String> roles = agentRoles.stream().map(m -> m.getRole()).collect(Collectors.toList());
+        return roles;
     }
 
     @Override
@@ -120,14 +126,16 @@ public class ServerProcessImpl implements ServerProcess {
     }
 
     @Override
-    public RResult register(String host, Integer port) {
-        AgentEntity agentEntity = serverDao.agentInfo(host, port);
+    public boolean register(String host, Integer port) {
+        AgentEntity agentEntity = serverDao.agentInfo(host);
         if (agentEntity != null) {
-            return RResult.success("agent already register");
+            log.warn("agent already register");
+            return true;
         }
         serverDao.registerAgent(host, port);
         agentCache.putAgent(new AgentEntity(host, port, AgentStatus.RUNNING.name()));
-        return RResult.success("agent register success");
+        log.info("agent register success");
+        return true;
     }
 
     /**

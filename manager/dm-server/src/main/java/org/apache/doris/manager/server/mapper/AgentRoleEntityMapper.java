@@ -14,41 +14,23 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.doris.manager.server.service;
+package org.apache.doris.manager.server.mapper;
 
+import org.apache.doris.manager.server.entity.AgentRoleEntity;
+import org.springframework.jdbc.core.RowMapper;
 
-import org.apache.doris.manager.common.domain.RResult;
-import org.apache.doris.manager.server.entity.AgentEntity;
-import org.apache.doris.manager.server.model.req.SshInfo;
-
-import java.util.List;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 /**
- * server
- */
-public interface ServerProcess {
-
-
-    void initAgent(SshInfo sshInfo);
-
-    /**
-     * install agent
-     */
-    void startAgent(SshInfo sshInfo);
-
-    /**
-     * agent list
-     */
-    List<AgentEntity> agentList();
-
-    /**
-     * update agent status batch
-     */
-    int updateBatchAgentStatus(List<AgentEntity> agents);
-
-    List<String> agentRole(String host);
-
-    void heartbeat(String host, Integer port);
-
-    boolean register(String host, Integer port);
+ * agent role entity row mapper
+ **/
+public class AgentRoleEntityMapper implements RowMapper<AgentRoleEntity> {
+    @Override
+    public AgentRoleEntity mapRow(ResultSet resultSet, int i) throws SQLException {
+        String ht = resultSet.getString("host");
+        String re = resultSet.getString("role");
+        String installDir = resultSet.getString("install_dir");
+        return new AgentRoleEntity(ht, re, installDir);
+    }
 }

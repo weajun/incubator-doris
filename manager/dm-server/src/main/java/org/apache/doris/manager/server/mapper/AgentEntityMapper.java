@@ -14,41 +14,28 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.doris.manager.server.service;
+package org.apache.doris.manager.server.mapper;
 
-
-import org.apache.doris.manager.common.domain.RResult;
 import org.apache.doris.manager.server.entity.AgentEntity;
-import org.apache.doris.manager.server.model.req.SshInfo;
+import org.springframework.jdbc.core.RowMapper;
 
-import java.util.List;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Date;
 
 /**
- * server
- */
-public interface ServerProcess {
+ * agent row mapper
+ **/
+public class AgentEntityMapper implements RowMapper<AgentEntity> {
 
-
-    void initAgent(SshInfo sshInfo);
-
-    /**
-     * install agent
-     */
-    void startAgent(SshInfo sshInfo);
-
-    /**
-     * agent list
-     */
-    List<AgentEntity> agentList();
-
-    /**
-     * update agent status batch
-     */
-    int updateBatchAgentStatus(List<AgentEntity> agents);
-
-    List<String> agentRole(String host);
-
-    void heartbeat(String host, Integer port);
-
-    boolean register(String host, Integer port);
+    @Override
+    public AgentEntity mapRow(ResultSet resultSet, int i) throws SQLException {
+        Integer id = resultSet.getInt("id");
+        String ht = resultSet.getString("host");
+        Integer pt = resultSet.getInt("port");
+        String status = resultSet.getString("status");
+        Date registerTime = resultSet.getTimestamp("register_time");
+        Date lastReportedTime = resultSet.getTimestamp("last_reported_time");
+        return new AgentEntity(id, ht, pt, status, registerTime, lastReportedTime);
+    }
 }

@@ -69,7 +69,7 @@ public class ServerController {
     }
 
     /**
-     * heatbeat report api
+     * heatbeat agent
      */
     @RequestMapping(value = "/heartbeat", method = RequestMethod.POST)
     public RResult heartbeat(@RequestBody AgentCommon agent) {
@@ -79,12 +79,13 @@ public class ServerController {
     }
 
     /**
-     * register report api
+     * register agent
      */
     @RequestMapping(value = "/register", method = RequestMethod.POST)
     public RResult register(@RequestBody AgentCommon agent) {
         log.info("{} register.", agent.getHost());
-        return serverProcess.register(agent.getHost(), agent.getPort());
+        boolean register = serverProcess.register(agent.getHost(), agent.getPort());
+        return RResult.success(register);
     }
 
 }

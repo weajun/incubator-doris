@@ -16,7 +16,9 @@
 // under the License.
 package org.apache.doris.manager.server.service;
 
+
 import org.apache.doris.manager.common.domain.RResult;
+import org.apache.doris.manager.server.model.req.AgentReg;
 import org.apache.doris.manager.server.model.req.DorisExecReq;
 import org.apache.doris.manager.server.model.req.DorisInstallReq;
 import org.apache.doris.manager.server.model.req.TaskInfoReq;
@@ -51,4 +53,8 @@ public interface ServerAgent {
     RResult taskStdlog(TaskLogReq taskInfo);
 
     RResult taskErrlog(TaskLogReq taskInfo);
+
+    void joinBe(List<String> hosts);
+
+    boolean register(AgentReg agentReg);
 }
