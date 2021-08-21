@@ -16,8 +16,8 @@
 // under the License.
 package org.apache.doris.manager.server.controller;
 
+import org.apache.doris.manager.common.domain.AgentRoleRegister;
 import org.apache.doris.manager.common.domain.RResult;
-import org.apache.doris.manager.server.model.req.AgentReg;
 import org.apache.doris.manager.server.model.req.DorisExecReq;
 import org.apache.doris.manager.server.model.req.DorisInstallReq;
 import org.apache.doris.manager.server.model.req.TaskInfoReq;
@@ -92,7 +92,7 @@ public class AgentController {
      * register role service (be/fe)
      */
     @RequestMapping(value = "/register", method = RequestMethod.POST)
-    public RResult register(@RequestBody AgentReg agentReg) {
+    public RResult register(@RequestBody AgentRoleRegister agentReg) {
         boolean register = serverAgent.register(agentReg);
         return RResult.success(register);
     }

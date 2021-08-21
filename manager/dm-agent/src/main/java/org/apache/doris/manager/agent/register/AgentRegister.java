@@ -31,6 +31,7 @@ public class AgentRegister {
         Map<String, Object> map = new HashMap<>();
         map.put("host", AgentContext.getAgentIp());
         map.put("port", AgentContext.getAgentPort());
+        map.put("installDir", AgentContext.getAgentInstallDir());
 
         RResult res = null;
         try{

@@ -19,6 +19,7 @@ package org.apache.doris.manager.server.dao;
 
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
+import org.apache.doris.manager.server.model.req.AgentRegister;
 
 import java.util.List;
 
@@ -35,7 +36,7 @@ public interface ServerDao {
 
     int refreshAgentStatus(String host, Integer port);
 
-    int registerAgent(String host, Integer port);
+    int registerAgent(AgentRegister agent);
 
     int updateBatchAgentStatus(List<AgentEntity> agents);
 

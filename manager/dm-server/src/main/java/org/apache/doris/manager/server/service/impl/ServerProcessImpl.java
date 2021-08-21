@@ -18,6 +18,7 @@ package org.apache.doris.manager.server.service.impl;
 
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.doris.manager.common.domain.RResult;
 import org.apache.doris.manager.server.agent.AgentCache;
 import org.apache.doris.manager.server.constants.AgentStatus;
@@ -25,6 +26,7 @@ import org.apache.doris.manager.server.dao.ServerDao;
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
 import org.apache.doris.manager.server.exceptions.ServerException;
+import org.apache.doris.manager.server.model.req.AgentRegister;
 import org.apache.doris.manager.server.model.req.SshInfo;
 import org.apache.doris.manager.server.service.ServerProcess;
 import org.apache.doris.manager.server.shell.SCP;
@@ -63,7 +65,6 @@ import static org.apache.doris.manager.server.constants.Constants.KEY_SERVER_POR
 public class ServerProcessImpl implements ServerProcess {
 
     private static final Logger log = LoggerFactory.getLogger(ServerProcessImpl.class);
-    private static final String AGENT_INSTALL_DIR = PropertiesUtil.getPropValue(KEY_DORIS_AGENT_INSTALL_DIR);
     private static final String AGENT_START_SCRIPT = PropertiesUtil.getPropValue(KEY_DORIS_AGENT_START_SCRIPT);
 
     @Autowired
@@ -81,16 +82,16 @@ public class ServerProcessImpl implements ServerProcess {
         Preconditions.checkNotNull(sshInfo.getHosts(), "hosts is empty");
         File sshKeyFile = buildSshKeyFile();
         writeSshKeyFile(sshInfo.getSshKey(), sshKeyFile);
-        scpFile(sshInfo, agentHome, AGENT_INSTALL_DIR);
+        scpFile(sshInfo, agentHome, sshInfo.getInstallDir());
     }
 
     @Override
     public void startAgent(SshInfo sshInfo) {
-        String command = "sh " + AGENT_INSTALL_DIR + File.separator + AGENT_START_SCRIPT + " --server " + getServerAddr() + " --agent %s";
+        String command = "sh " + sshInfo.getInstallDir() + File.separator + AGENT_START_SCRIPT + " --server " + getServerAddr() + " --agent %s --agentInstallDir %s";
         List<String> hosts = sshInfo.getHosts();
         for (String host : hosts) {
             File sshKeyFile = buildSshKeyFile();
-            String cmd = String.format(command, host);
+            String cmd = String.format(command, host, sshInfo.getInstallDir());
             SSH ssh = new SSH(sshInfo.getUser(), sshInfo.getSshPort(),
                     sshKeyFile.getAbsolutePath(), host, cmd);
             Integer run = ssh.run();
@@ -114,10 +115,9 @@ public class ServerProcessImpl implements ServerProcess {
     }
 
     @Override
-    public List<String> agentRole(String host) {
+    public List<AgentRoleEntity> agentRole(String host) {
         List<AgentRoleEntity> agentRoles = serverDao.agentRoles(host, null);
-        List<String> roles = agentRoles.stream().map(m -> m.getRole()).collect(Collectors.toList());
-        return roles;
+        return agentRoles;
     }
 
     @Override
@@ -126,14 +126,14 @@ public class ServerProcessImpl implements ServerProcess {
     }
 
     @Override
-    public boolean register(String host, Integer port) {
-        AgentEntity agentEntity = serverDao.agentInfo(host);
+    public boolean register(AgentRegister agent) {
+        AgentEntity agentEntity = serverDao.agentInfo(agent.getHost());
         if (agentEntity != null) {
             log.warn("agent already register");
             return true;
         }
-        serverDao.registerAgent(host, port);
-        agentCache.putAgent(new AgentEntity(host, port, AgentStatus.RUNNING.name()));
+        serverDao.registerAgent(agent);
+        agentCache.putAgent(new AgentEntity(agent.getHost(), agent.getPort(), agent.getInstallDir(), AgentStatus.RUNNING.name()));
         log.info("agent register success");
         return true;
     }

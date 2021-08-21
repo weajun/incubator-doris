@@ -16,24 +16,13 @@
 // under the License.
 package org.apache.doris.manager.server.model.req;
 
-/**
- * agent role register
- **/
-public class AgentReg {
+public class AgentRegister {
+
     private String host;
 
-    private String role;
+    private Integer port;
 
     private String installDir;
-
-    public AgentReg() {
-    }
-
-    public AgentReg(String host, String role,String installDir) {
-        this.host = host;
-        this.role = role;
-        this.installDir = installDir;
-    }
 
     public String getHost() {
         return host;
@@ -43,12 +32,12 @@ public class AgentReg {
         this.host = host;
     }
 
-    public String getRole() {
-        return role;
+    public Integer getPort() {
+        return port;
     }
 
-    public void setRole(String role) {
-        this.role = role;
+    public void setPort(Integer port) {
+        this.port = port;
     }
 
     public String getInstallDir() {

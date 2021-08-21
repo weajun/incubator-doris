@@ -24,6 +24,7 @@ OPTS=$(getopt \
   -o '' \
   -l 'server:' \
   -l 'agent:' \
+  -l 'agentInstallDir:' \
   -- "$@")
 
 eval set -- "$OPTS"
@@ -31,10 +32,12 @@ eval set -- "$OPTS"
 #host:port
 SERVER=
 AGENT=
+AGENT_INSTALL_DIR=
 while true; do
     case "$1" in
         --server) SERVER=$2 ; shift 2;;
         --agent) AGENT=$2 ; shift 2;;
+        --agentInstallDir) AGENT_INSTALL_DIR=$3 ; shift 2;;
         --) shift ;  break ;;
         *) echo "Internal error" ; exit 1 ;;
     esac
@@ -49,6 +52,11 @@ if [ x"$AGENT" == x"" ]; then
     echo "--agent ip can not empty!"
     exit 1
 fi
+
+if [ x"$AGENT_INSTALL_DIR" == x"" ]; then
+    echo "--agentInstallDir can not empty!"
+    exit 1
+fi
 export AGENT_HOME=`cd "$curdir/.."; pwd`
 
 #
@@ -57,7 +65,7 @@ export AGENT_HOME=`cd "$curdir/.."; pwd`
 # LOG_DIR
 # PID_DIR
 export JAVA_OPTS="-Xmx1024m"
-export SERVER_PARAMS="--agentServer=$SERVER --agentIp=$AGENT"
+export SERVER_PARAMS="--agentServer=$SERVER --agentIp=$AGENT --agentInstallDir=$AGENT_INSTALL_DIR"
 export LOG_DIR="$AGENT_HOME/log"
 export PID_DIR=`cd "$curdir"; pwd`
 

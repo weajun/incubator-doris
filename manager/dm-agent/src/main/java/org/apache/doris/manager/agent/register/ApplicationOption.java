@@ -30,4 +30,7 @@ public class ApplicationOption {
 
     @Option(name = "--role", usage = "Specify service role")
     public String role;
+
+    @Option(name = "--agentInstallDir", usage = "Specify agent installDir")
+    public String agentInstallDir;
 }

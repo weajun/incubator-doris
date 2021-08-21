@@ -16,26 +16,30 @@
 // under the License.
 package org.apache.doris.manager.server.controller;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.doris.manager.common.domain.RResult;
 import org.apache.doris.manager.server.model.req.AgentCommon;
+import org.apache.doris.manager.server.model.req.AgentRegister;
 import org.apache.doris.manager.server.model.req.SshInfo;
 import org.apache.doris.manager.server.service.ServerProcess;
-import org.apache.doris.manager.server.util.Preconditions;
+import org.apache.doris.manager.server.util.PropertiesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import static org.apache.doris.manager.server.constants.Constants.KEY_DORIS_AGENT_INSTALL_DIR;
 
 @RestController
 @RequestMapping("/server")
 public class ServerController {
 
     private static final Logger log = LoggerFactory.getLogger(ServerController.class);
+    private static final String AGENT_INSTALL_DIR = PropertiesUtil.getPropValue(KEY_DORIS_AGENT_INSTALL_DIR);
 
     @Autowired
     private ServerProcess serverProcess;
@@ -45,6 +49,9 @@ public class ServerController {
      */
     @RequestMapping(value = "/installAgent", method = RequestMethod.POST)
     public RResult installAgent(@RequestBody SshInfo sshInfo) {
+        if(StringUtils.isBlank(sshInfo.getInstallDir())){
+            sshInfo.setInstallDir(AGENT_INSTALL_DIR);
+        }
         serverProcess.initAgent(sshInfo);
         serverProcess.startAgent(sshInfo);
         return RResult.success();
@@ -61,10 +68,8 @@ public class ServerController {
     /**
      * agent role info
      */
-    @RequestMapping(value = "/agentRole", method = RequestMethod.POST)
-    public RResult agentRole(@RequestBody Map<String, Object> params) {
-        Preconditions.checkArgument(params.containsKey("host"), "host can not empty");
-        String host = params.get("host").toString();
+    @RequestMapping(value = "/agentRole", method = RequestMethod.GET)
+    public RResult agentRole(@RequestParam String host) {
         return RResult.success(serverProcess.agentRole(host));
     }
 
@@ -82,9 +87,9 @@ public class ServerController {
      * register agent
      */
     @RequestMapping(value = "/register", method = RequestMethod.POST)
-    public RResult register(@RequestBody AgentCommon agent) {
+    public RResult register(@RequestBody AgentRegister agent) {
         log.info("{} register.", agent.getHost());
-        boolean register = serverProcess.register(agent.getHost(), agent.getPort());
+        boolean register = serverProcess.register(agent);
         return RResult.success(register);
     }
 

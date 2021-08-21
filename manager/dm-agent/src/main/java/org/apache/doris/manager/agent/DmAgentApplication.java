@@ -21,6 +21,7 @@ import org.apache.doris.manager.agent.register.AgentHeartbeat;
 import org.apache.doris.manager.agent.register.AgentRegister;
 import org.apache.doris.manager.agent.register.AgentRole;
 import org.apache.doris.manager.agent.register.ApplicationOption;
+import org.apache.doris.manager.common.domain.AgentRoleRegister;
 import org.apache.doris.manager.common.domain.Role;
 import org.apache.doris.manager.agent.common.PropertiesUtil;
 import org.kohsuke.args4j.CmdLineException;
@@ -48,14 +49,10 @@ public class DmAgentApplication {
         }
 
         String agentPort = PropertiesUtil.getPropValue("server.port");
-
-        ApplicationHome applicationHome = new ApplicationHome(DmAgentApplication.class);
-        String agentInstallDir = applicationHome.getSource().getParentFile().getParentFile().toString();
-
-        AgentContext.init(option.role, option.agentIp, Integer.valueOf(agentPort), option.agentServer, option.dorisHomeDir, agentInstallDir);
+        AgentContext.init(option.role, option.agentIp, Integer.valueOf(agentPort), option.agentServer, option.dorisHomeDir, option.agentInstallDir);
 
 
-        List<String> role = AgentRole.queryRole();
+        List<AgentRoleRegister> role = AgentRole.queryRole();
         //AgentContext.setRole(Role.findByName(role));
 
         // register agent

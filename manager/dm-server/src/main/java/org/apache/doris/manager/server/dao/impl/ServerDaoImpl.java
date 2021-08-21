@@ -23,6 +23,7 @@ import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
 import org.apache.doris.manager.server.mapper.AgentEntityMapper;
 import org.apache.doris.manager.server.mapper.AgentRoleEntityMapper;
+import org.apache.doris.manager.server.model.req.AgentRegister;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,7 +51,7 @@ public class ServerDaoImpl implements ServerDao {
 
     @Override
     public List<AgentEntity> queryAgentNodes(List<String> hosts) {
-        String sql = "select id,host,port,status,register_time,last_reported_time" +
+        String sql = "select id,host,port,install_dir,status,register_time,last_reported_time" +
                 " from t_agent ";
         if (hosts != null && !hosts.isEmpty()) {
             sql = sql + " where host in (%s)";
@@ -64,7 +65,7 @@ public class ServerDaoImpl implements ServerDao {
 
     @Override
     public AgentEntity agentInfo(String host) {
-        String sql = "select id,host,port,status,register_time,last_reported_time from t_agent where host = ? ";
+        String sql = "select id,host,port,install_dir,status,register_time,last_reported_time from t_agent where host = ? ";
         List<AgentEntity> agents = jdbcTemplate.query(sql, new AgentEntityMapper(), host);
         if (agents != null && !agents.isEmpty()) {
             return agents.get(0);
@@ -79,9 +80,9 @@ public class ServerDaoImpl implements ServerDao {
     }
 
     @Override
-    public int registerAgent(String host, Integer port) {
-        String sql = "insert into t_agent(host,port,status,register_time) values(?,?,?,now())";
-        return jdbcTemplate.update(sql, host, port, AgentStatus.RUNNING.name());
+    public int registerAgent(AgentRegister agent) {
+        String sql = "insert into t_agent(host,port,install_dir,status,register_time) values(?,?,?,?,now())";
+        return jdbcTemplate.update(sql, agent.getHost(), agent.getPort(), agent.getInstallDir(), AgentStatus.RUNNING.name());
     }
 
     @Override

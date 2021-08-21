@@ -19,6 +19,8 @@ package org.apache.doris.manager.server.service;
 
 import org.apache.doris.manager.common.domain.RResult;
 import org.apache.doris.manager.server.entity.AgentEntity;
+import org.apache.doris.manager.server.entity.AgentRoleEntity;
+import org.apache.doris.manager.server.model.req.AgentRegister;
 import org.apache.doris.manager.server.model.req.SshInfo;
 
 import java.util.List;
@@ -46,9 +48,9 @@ public interface ServerProcess {
      */
     int updateBatchAgentStatus(List<AgentEntity> agents);
 
-    List<String> agentRole(String host);
+    List<AgentRoleEntity> agentRole(String host);
 
     void heartbeat(String host, Integer port);
 
-    boolean register(String host, Integer port);
+    boolean register(AgentRegister agent);
 }

@@ -29,6 +29,8 @@ public class AgentEntity {
 
     private Integer port;
 
+    private String installDir;
+
     private String status;
 
     private Date registerTime;
@@ -38,18 +40,20 @@ public class AgentEntity {
     public AgentEntity() {
     }
 
-    public AgentEntity(Integer id, String host, Integer port, String status, Date registerTime, Date lastReportedTime) {
+    public AgentEntity(Integer id, String host, Integer port, String installDir, String status, Date registerTime, Date lastReportedTime) {
         this.id = id;
         this.host = host;
         this.port = port;
+        this.installDir = installDir;
         this.status = status;
         this.registerTime = registerTime;
         this.lastReportedTime = lastReportedTime;
     }
 
-    public AgentEntity(String host, Integer port, String status) {
+    public AgentEntity(String host, Integer port, String installDir, String status) {
         this.host = host;
         this.port = port;
+        this.installDir = installDir;
         this.status = status;
     }
 
@@ -75,6 +79,14 @@ public class AgentEntity {
 
     public void setPort(Integer port) {
         this.port = port;
+    }
+
+    public String getInstallDir() {
+        return installDir;
+    }
+
+    public void setInstallDir(String installDir) {
+        this.installDir = installDir;
     }
 
     public String getStatus() {

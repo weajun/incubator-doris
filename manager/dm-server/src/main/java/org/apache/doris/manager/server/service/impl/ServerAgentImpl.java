@@ -17,6 +17,7 @@
 package org.apache.doris.manager.server.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import org.apache.doris.manager.common.domain.AgentRoleRegister;
 import org.apache.doris.manager.common.domain.BeInstallCommandRequestBody;
 import org.apache.doris.manager.common.domain.CommandRequest;
 import org.apache.doris.manager.common.domain.CommandType;
@@ -31,7 +32,6 @@ import org.apache.doris.manager.server.dao.ServerDao;
 import org.apache.doris.manager.server.entity.AgentEntity;
 import org.apache.doris.manager.server.entity.AgentRoleEntity;
 import org.apache.doris.manager.server.exceptions.ServerException;
-import org.apache.doris.manager.server.model.req.AgentReg;
 import org.apache.doris.manager.server.model.req.DorisExec;
 import org.apache.doris.manager.server.model.req.DorisExecReq;
 import org.apache.doris.manager.server.model.req.DorisInstallReq;
@@ -206,7 +206,7 @@ public class ServerAgentImpl implements ServerAgent {
     }
 
     @Override
-    public boolean register(AgentReg agentReg) {
+    public boolean register(AgentRoleRegister agentReg) {
         AgentEntity agent = serverDao.agentInfo(agentReg.getHost());
         if(agent == null){
             throw new ServerException("can not find " + agentReg.getHost() + " agent");
