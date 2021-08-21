@@ -43,6 +43,7 @@ import org.apache.doris.analysis.BackupStmt;
 import org.apache.doris.analysis.CancelAlterSystemStmt;
 import org.apache.doris.analysis.CancelAlterTableStmt;
 import org.apache.doris.analysis.CancelBackupStmt;
+import org.apache.doris.analysis.AdminCleanTrashStmt;
 import org.apache.doris.analysis.ColumnRenameClause;
 import org.apache.doris.analysis.CreateClusterStmt;
 import org.apache.doris.analysis.CreateDbStmt;
@@ -65,6 +66,7 @@ import org.apache.doris.analysis.InstallPluginStmt;
 import org.apache.doris.analysis.KeysDesc;
 import org.apache.doris.analysis.LinkDbStmt;
 import org.apache.doris.analysis.MigrateDbStmt;
+import org.apache.doris.analysis.ModifyDistributionClause;
 import org.apache.doris.analysis.PartitionDesc;
 import org.apache.doris.analysis.PartitionRenameClause;
 import org.apache.doris.analysis.RecoverDbStmt;
@@ -82,8 +84,8 @@ import org.apache.doris.analysis.TruncateTableStmt;
 import org.apache.doris.analysis.UninstallPluginStmt;
 import org.apache.doris.analysis.UserDesc;
 import org.apache.doris.analysis.UserIdentity;
-import org.apache.doris.analysis.ModifyDistributionClause;
 import org.apache.doris.backup.BackupHandler;
+import org.apache.doris.blockrule.SqlBlockRuleMgr;
 import org.apache.doris.catalog.ColocateTableIndex.GroupId;
 import org.apache.doris.catalog.Database.DbState;
 import org.apache.doris.catalog.DistributionInfo.DistributionInfoType;
@@ -104,6 +106,7 @@ import org.apache.doris.cluster.ClusterNamespace;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.ConfigBase;
+import org.apache.doris.common.ClientPool;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
@@ -162,6 +165,8 @@ import org.apache.doris.load.routineload.RoutineLoadManager;
 import org.apache.doris.load.routineload.RoutineLoadScheduler;
 import org.apache.doris.load.routineload.RoutineLoadTaskScheduler;
 import org.apache.doris.load.update.UpdateManager;
+import org.apache.doris.load.sync.SyncChecker;
+import org.apache.doris.load.sync.SyncJobManager;
 import org.apache.doris.master.Checkpoint;
 import org.apache.doris.master.MetaHelper;
 import org.apache.doris.master.PartitionInMemoryInfoCollector;
@@ -204,6 +209,7 @@ import org.apache.doris.qe.JournalObservable;
 import org.apache.doris.qe.SessionVariable;
 import org.apache.doris.qe.VariableMgr;
 import org.apache.doris.service.FrontendOptions;
+import org.apache.doris.statistics.StatisticsManager;
 import org.apache.doris.system.Backend;
 import org.apache.doris.system.Backend.BackendState;
 import org.apache.doris.system.Frontend;
@@ -215,15 +221,16 @@ import org.apache.doris.task.AgentTaskQueue;
 import org.apache.doris.task.CreateReplicaTask;
 import org.apache.doris.task.DropReplicaTask;
 import org.apache.doris.task.MasterTaskExecutor;
+import org.apache.doris.thrift.BackendService;
 import org.apache.doris.thrift.TStorageFormat;
 import org.apache.doris.thrift.TStorageMedium;
 import org.apache.doris.thrift.TStorageType;
 import org.apache.doris.thrift.TTabletType;
 import org.apache.doris.thrift.TTaskType;
+import org.apache.doris.thrift.TNetworkAddress;
 import org.apache.doris.transaction.DbUsedDataQuotaInfoCollector;
 import org.apache.doris.transaction.GlobalTransactionMgr;
 import org.apache.doris.transaction.PublishVersionDaemon;
-
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -233,14 +240,10 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
-import com.sleepycat.je.rep.InsufficientLogException;
-import com.sleepycat.je.rep.NetworkRestore;
-import com.sleepycat.je.rep.NetworkRestoreConfig;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -266,6 +269,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.sleepycat.je.rep.InsufficientLogException;
+import com.sleepycat.je.rep.NetworkRestore;
+import com.sleepycat.je.rep.NetworkRestoreConfig;
+import org.codehaus.jackson.map.ObjectMapper;
 
 public class Catalog {
     private static final Logger LOG = LogManager.getLogger(Catalog.class);
@@ -302,7 +310,9 @@ public class Catalog {
     private LoadManager loadManager;
     private StreamLoadRecordMgr streamLoadRecordMgr;
     private RoutineLoadManager routineLoadManager;
+    private SqlBlockRuleMgr sqlBlockRuleMgr;
     private ExportMgr exportMgr;
+    private SyncJobManager syncJobManager;
     private Alter alter;
     private ConsistencyChecker consistencyChecker;
     private BackupHandler backupHandler;
@@ -384,6 +394,7 @@ public class Catalog {
     private DeployManager deployManager;
 
     private TabletStatMgr tabletStatMgr;
+    private StatisticsManager statisticsManager;
 
     private PaloAuth auth;
 
@@ -488,7 +499,9 @@ public class Catalog {
         this.fullNameToDb = new ConcurrentHashMap<>();
         this.load = new Load();
         this.routineLoadManager = new RoutineLoadManager();
+        this.sqlBlockRuleMgr = new SqlBlockRuleMgr();
         this.exportMgr = new ExportMgr();
+        this.syncJobManager = new SyncJobManager();
         this.alter = new Alter();
         this.consistencyChecker = new ConsistencyChecker();
         this.lock = new QueryableReentrantLock(true);
@@ -534,7 +547,9 @@ public class Catalog {
         this.resourceMgr = new ResourceMgr();
 
         this.globalTransactionMgr = new GlobalTransactionMgr(this);
+
         this.tabletStatMgr = new TabletStatMgr();
+        this.statisticsManager = new StatisticsManager();
 
         this.auth = new PaloAuth();
         this.domainResolver = new DomainResolver(auth);
@@ -677,6 +692,10 @@ public class Catalog {
 
     public static AuditEventProcessor getCurrentAuditEventProcessor() {
         return getCurrentCatalog().getAuditEventProcessor();
+    }
+
+    public StatisticsManager getStatisticsManager() {
+        return statisticsManager;
     }
 
     // Use tryLock to avoid potential dead lock
@@ -1280,6 +1299,9 @@ public class Catalog {
         // Export checker
         ExportChecker.init(Config.export_checker_interval_second * 1000L);
         ExportChecker.startAll();
+        // Sync checker
+        SyncChecker.init(Config.sync_checker_interval_second);
+        SyncChecker.startAll();
         // Tablet checker and scheduler
         tabletChecker.start();
         tabletScheduler.start();
@@ -1686,6 +1708,14 @@ public class Catalog {
         return newChecksum;
     }
 
+    public long loadSyncJobs(DataInputStream dis, long checksum) throws IOException, DdlException {
+        if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_103) {
+            syncJobManager.readField(dis);
+        }
+        LOG.info("finished replay syncJobMgr from image");
+        return checksum;
+    }
+
     public long loadAlterJob(DataInputStream dis, long checksum) throws IOException {
         long newChecksum = checksum;
         for (JobType type : JobType.values()) {
@@ -1882,6 +1912,14 @@ public class Catalog {
         return checksum;
     }
 
+    public long loadSqlBlockRule(DataInputStream in, long checksum) throws IOException {
+        if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_104) {
+            sqlBlockRuleMgr = SqlBlockRuleMgr.read(in);
+        }
+        LOG.info("finished replay sqlBlockRule from image");
+        return checksum;
+    }
+
     // Only called by checkpoint thread
     public void saveImage() throws IOException {
         // Write image.ckpt
@@ -2026,6 +2064,11 @@ public class Catalog {
         return checksum;
     }
 
+    public long saveSyncJobs(CountingDataOutputStream dos, long checksum) throws IOException {
+        syncJobManager.write(dos);
+        return checksum;
+    }
+
     public long saveAlterJob(CountingDataOutputStream dos, long checksum) throws IOException {
         for (JobType type : JobType.values()) {
             checksum = saveAlterJob(dos, checksum, type);
@@ -2147,6 +2190,11 @@ public class Catalog {
 
     public long saveSmallFiles(CountingDataOutputStream dos, long checksum) throws IOException {
         smallFileMgr.write(dos);
+        return checksum;
+    }
+
+    public long saveSqlBlockRule(DataOutputStream out, long checksum) throws IOException {
+        Catalog.getCurrentCatalog().getSqlBlockRuleMgr().write(out);
         return checksum;
     }
 
@@ -4840,12 +4888,20 @@ public class Catalog {
         return routineLoadManager;
     }
 
+    public SqlBlockRuleMgr getSqlBlockRuleMgr() {
+        return sqlBlockRuleMgr;
+    }
+
     public RoutineLoadTaskScheduler getRoutineLoadTaskScheduler(){
         return routineLoadTaskScheduler;
     }
 
     public ExportMgr getExportMgr() {
         return this.exportMgr;
+    }
+
+    public SyncJobManager getSyncJobManager() {
+        return this.syncJobManager;
     }
 
     public SmallFileMgr getSmallFileMgr() {
@@ -5727,8 +5783,8 @@ public class Catalog {
         return functionSet.getBulitinFunctions();
     }
 
-    public boolean isNonNullResultWithNullParamFunction(String funcName) {
-        return functionSet.isNonNullResultWithNullParamFunctions(funcName);
+    public boolean isNullResultWithOneNullParamFunction(String funcName) {
+        return functionSet.isNullResultWithOneNullParamFunctions(funcName);
     }
 
     public boolean isNondeterministicFunction(String funcName) {
@@ -6289,8 +6345,8 @@ public class Catalog {
                 InfoSchemaDb db;
                 // Use real Catalog instance to avoid InfoSchemaDb id continuously increment
                 // when checkpoint thread load image.
-                if (Catalog.getCurrentCatalog().getFullNameToDb().containsKey(dbName)) {
-                    db = (InfoSchemaDb)Catalog.getCurrentCatalog().getFullNameToDb().get(dbName);
+                if (Catalog.getServingCatalog().getFullNameToDb().containsKey(dbName)) {
+                    db = (InfoSchemaDb)Catalog.getServingCatalog().getFullNameToDb().get(dbName);
                 } else {
                     db = new InfoSchemaDb(cluster.getName());
                     db.setClusterName(cluster.getName());
@@ -7046,6 +7102,29 @@ public class Catalog {
         for (MaterializedIndex index : partition.getMaterializedIndices(IndexExtState.ALL)) {
             for (Tablet tablet : index.getTablets()) {
                 invertedIndex.deleteTablet(tablet.getId());
+            }
+        }
+    }
+
+    public void cleanTrash(AdminCleanTrashStmt stmt) {
+        List<Backend> backends = stmt.getBackends();
+        for (Backend backend : backends){
+            BackendService.Client client = null;
+            TNetworkAddress address = null;
+            boolean ok = false;
+            try {
+                address = new TNetworkAddress(backend.getHost(), backend.getBePort());
+                client = ClientPool.backendPool.borrowObject(address);
+                client.cleanTrash(); // async
+                ok = true;
+            } catch (Exception e) {
+                LOG.warn("trash clean exec error. backend[{}]", backend.getId(), e);
+            } finally {
+                if (ok) {
+                    ClientPool.backendPool.returnObject(address, client);
+                } else {
+                    ClientPool.backendPool.invalidateObject(address, client);
+                }
             }
         }
     }

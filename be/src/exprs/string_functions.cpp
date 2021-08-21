@@ -879,9 +879,8 @@ StringVal StringFunctions::money_format(FunctionContext* context, const DoubleVa
     if (v.is_null) {
         return StringVal::null();
     }
-
-    double v_cent = MathFunctions::my_double_round(v.val, 2, false, false) * 100;
-    return do_money_format(context, std::to_string(v_cent));
+    double v_cent = MathFunctions::my_double_round(v.val, 2, false, false);
+    return do_money_format(context, fmt::format("{:.2f}", v_cent));
 }
 
 StringVal StringFunctions::money_format(FunctionContext* context, const DecimalV2Val& v) {
@@ -891,25 +890,21 @@ StringVal StringFunctions::money_format(FunctionContext* context, const DecimalV
 
     DecimalV2Value rounded(0);
     DecimalV2Value::from_decimal_val(v).round(&rounded, 2, HALF_UP);
-    DecimalV2Value tmp(std::string_view("100"));
-    DecimalV2Value result = rounded * tmp;
-    return do_money_format(context, result.to_string());
+    return do_money_format<int64_t, 26>(context, rounded.int_value(), abs(rounded.frac_value() / 10000000));
 }
 
 StringVal StringFunctions::money_format(FunctionContext* context, const BigIntVal& v) {
     if (v.is_null) {
         return StringVal::null();
     }
-
-    return do_money_format(context, fmt::format("{}00", v.val, "00"));
+    return do_money_format<int64_t, 26>(context, v.val);
 }
 
 StringVal StringFunctions::money_format(FunctionContext* context, const LargeIntVal& v) {
     if (v.is_null) {
         return StringVal::null();
     }
-
-    return do_money_format(context, fmt::format("{}00", v.val, "00"));
+    return do_money_format<__int128_t, 52>(context, v.val);
 }
 
 static int index_of(const uint8_t* source, int source_offset, int source_count,

@@ -26,6 +26,7 @@ import org.apache.doris.mysql.MysqlCapability;
 import org.apache.doris.mysql.MysqlChannel;
 import org.apache.doris.mysql.MysqlCommand;
 import org.apache.doris.mysql.MysqlSerializer;
+import org.apache.doris.mysql.privilege.PaloRole;
 import org.apache.doris.plugin.AuditEvent.AuditEventBuilder;
 import org.apache.doris.thrift.TResourceInfo;
 import org.apache.doris.thrift.TUniqueId;
@@ -74,6 +75,10 @@ public class ConnectContext {
     protected volatile String clusterName = "";
     // username@host of current login user
     protected volatile String qualifiedUser;
+    // LDAP authenticated but the Doris account does not exist, set the flag, and the user login Doris as Temporary user.
+    protected volatile boolean isTempUser = false;
+    // Save the privs from the ldap groups.
+    protected volatile PaloRole ldapGroupsPrivs = null;
     // username@host combination for the Doris account
     // that the server used to authenticate the current client.
     // In other word, currentUserIdentity is the entry that matched in Doris auth table.
@@ -110,6 +115,8 @@ public class ConnectContext {
 
     // If set to true, the nondeterministic function will not be rewrote to constant.
     private boolean notEvalNondeterministicFunction = false;
+
+    private String sqlHash;
 
     public static ConnectContext get() {
         return threadLocalInfo.get();
@@ -184,11 +191,6 @@ public class ConnectContext {
         }
     }
 
-    // Just for unit test
-    public void resetSessionVariables() {
-        sessionVariable = VariableMgr.newSessionVariable();
-    }
-
     public long getStmtId() {
         return stmtId;
     }
@@ -259,6 +261,16 @@ public class ConnectContext {
 
     public void setQualifiedUser(String qualifiedUser) {
         this.qualifiedUser = qualifiedUser;
+    }
+
+    public boolean getIsTempUser() { return isTempUser;}
+
+    public void setIsTempUser(boolean isTempUser) { this.isTempUser = isTempUser;}
+
+    public PaloRole getLdapGroupsPrivs() { return ldapGroupsPrivs; }
+
+    public void setLdapGroupsPrivs(PaloRole ldapGroupsPrivs) {
+        this.ldapGroupsPrivs = ldapGroupsPrivs;
     }
 
     // for USER() function
@@ -402,6 +414,14 @@ public class ConnectContext {
 
     public void setCluster(String clusterName) {
         this.clusterName = clusterName;
+    }
+
+    public String getSqlHash() {
+        return sqlHash;
+    }
+
+    public void setSqlHash(String sqlHash) {
+        this.sqlHash = sqlHash;
     }
 
     // kill operation with no protect.

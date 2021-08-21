@@ -14,20 +14,26 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+package org.apache.doris.spark.rest.models;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-#pragma once
+import java.util.List;
 
-#include "http/http_handler.h"
+/**
+ * Be response model
+ **/
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Backend {
 
-namespace doris {
+    @JsonProperty(value = "rows")
+    private List<BackendRow> rows;
 
-// Update BE config.
-class UpdateConfigAction : public HttpHandler {
-public:
-    UpdateConfigAction() {}
-    virtual ~UpdateConfigAction() {}
+    public List<BackendRow> getRows() {
+        return rows;
+    }
 
-    void handle(HttpRequest* req) override;
-};
-
-} // namespace doris
+    public void setRows(List<BackendRow> rows) {
+        this.rows = rows;
+    }
+}

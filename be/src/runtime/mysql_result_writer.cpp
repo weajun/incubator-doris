@@ -32,9 +32,9 @@
 namespace doris {
 
 MysqlResultWriter::MysqlResultWriter(BufferControlBlock* sinker,
-                                     const std::vector<ExprContext*>& output_expr_ctxs,
-                                     RuntimeProfile* parent_profile)
-        : _sinker(sinker),
+                                     const std::vector<ExprContext*>& output_expr_ctxs, RuntimeProfile* parent_profile)
+        : ResultWriter(),
+          _sinker(sinker),
           _output_expr_ctxs(output_expr_ctxs),
           _row_buffer(NULL),
           _parent_profile(parent_profile) {}
@@ -49,8 +49,7 @@ Status MysqlResultWriter::init(RuntimeState* state) {
         return Status::InternalError("sinker is NULL pointer.");
     }
 
-    _row_buffer = new (std::nothrow) MysqlRowBuffer();
-
+    _row_buffer = new(std::nothrow) MysqlRowBuffer();
     if (NULL == _row_buffer) {
         return Status::InternalError("no memory to alloc.");
     }
@@ -90,11 +89,8 @@ int MysqlResultWriter::_add_row_value(int index, const TypeDescriptor& type, voi
         break;
 
     case TYPE_LARGEINT: {
-        char buf[48];
-        int len = 48;
-        char* v = LargeIntValue::to_string(reinterpret_cast<const PackedInt128*>(item)->value, buf,
-                                           &len);
-        buf_ret = _row_buffer->push_string(v, len);
+        auto string_value = LargeIntValue::to_string(reinterpret_cast<const PackedInt128*>(item)->value);
+        buf_ret = _row_buffer->push_string(string_value.data(), string_value.size());
         break;
     }
 
@@ -130,7 +126,8 @@ int MysqlResultWriter::_add_row_value(int index, const TypeDescriptor& type, voi
     }
 
     case TYPE_VARCHAR:
-    case TYPE_CHAR: {
+    case TYPE_CHAR:
+    case TYPE_STRING: {
         const StringValue* string_val = (const StringValue*)(item);
 
         if (string_val->ptr == NULL) {

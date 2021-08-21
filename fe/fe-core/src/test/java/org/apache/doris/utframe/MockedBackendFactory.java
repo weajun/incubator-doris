@@ -33,6 +33,7 @@ import org.apache.doris.thrift.TBackendInfo;
 import org.apache.doris.thrift.TCancelPlanFragmentParams;
 import org.apache.doris.thrift.TCancelPlanFragmentResult;
 import org.apache.doris.thrift.TDeleteEtlFilesRequest;
+import org.apache.doris.thrift.TDiskTrashInfo;
 import org.apache.doris.thrift.TEtlState;
 import org.apache.doris.thrift.TExecPlanFragmentParams;
 import org.apache.doris.thrift.TExecPlanFragmentResult;
@@ -245,6 +246,16 @@ public class MockedBackendFactory {
         }
 
         @Override
+        public long getTrashUsedCapacity() throws TException {
+            return  0l;
+        }
+
+        @Override
+        public List<TDiskTrashInfo> getDiskTrashUsedCapacity() throws TException {
+            return null;
+        }
+
+        @Override
         public TTabletStatResult getTabletStat() throws TException {
             return new TTabletStatResult(Maps.newHashMap());
         }
@@ -272,6 +283,11 @@ public class MockedBackendFactory {
         @Override
         public TStreamLoadRecordResult getStreamLoadRecord(long last_stream_record_time) throws TException {
             return new TStreamLoadRecordResult(Maps.newHashMap());
+        }
+
+        @Override
+        public void cleanTrash() throws TException {
+            return;
         }
     }
 

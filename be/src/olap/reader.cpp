@@ -18,8 +18,8 @@
 #include "olap/reader.h"
 
 #include <boost/algorithm/string/case_conv.hpp>
+#include <charconv>
 #include <parallel_hashmap/phmap.h>
-#include <sstream>
 #include <unordered_set>
 
 #include "olap/bloom_filter_predicate.h"
@@ -651,37 +651,33 @@ void Reader::_init_conditions_param(const ReaderParams& read_params) {
         ColumnPredicate* predicate = nullptr;                                                   \
         switch (column.type()) {                                                                \
         case OLAP_FIELD_TYPE_TINYINT: {                                                         \
-            std::stringstream ss(cond);                                                         \
-            int32_t value = 0;                                                                  \
-            ss >> value;                                                                        \
+            int8_t value = 0;                                                                   \
+            std::from_chars(cond.data(), cond.data() + cond.size(), value);                     \
             predicate = new PREDICATE<int8_t>(index, value, opposite);                          \
             break;                                                                              \
         }                                                                                       \
         case OLAP_FIELD_TYPE_SMALLINT: {                                                        \
-            std::stringstream ss(cond);                                                         \
             int16_t value = 0;                                                                  \
-            ss >> value;                                                                        \
+            std::from_chars(cond.data(), cond.data() + cond.size(), value);                     \
             predicate = new PREDICATE<int16_t>(index, value, opposite);                         \
             break;                                                                              \
         }                                                                                       \
         case OLAP_FIELD_TYPE_INT: {                                                             \
-            std::stringstream ss(cond);                                                         \
             int32_t value = 0;                                                                  \
-            ss >> value;                                                                        \
+            std::from_chars(cond.data(), cond.data() + cond.size(), value);                     \
             predicate = new PREDICATE<int32_t>(index, value, opposite);                         \
             break;                                                                              \
         }                                                                                       \
         case OLAP_FIELD_TYPE_BIGINT: {                                                          \
-            std::stringstream ss(cond);                                                         \
             int64_t value = 0;                                                                  \
-            ss >> value;                                                                        \
+            std::from_chars(cond.data(), cond.data() + cond.size(), value);                     \
             predicate = new PREDICATE<int64_t>(index, value, opposite);                         \
             break;                                                                              \
         }                                                                                       \
         case OLAP_FIELD_TYPE_LARGEINT: {                                                        \
-            std::stringstream ss(cond);                                                         \
             int128_t value = 0;                                                                 \
-            ss >> value;                                                                        \
+            StringParser::ParseResult result;                                                   \
+            value = StringParser::string_to_int<__int128>(cond.data(), cond.size(), &result);   \
             predicate = new PREDICATE<int128_t>(index, value, opposite);                        \
             break;                                                                              \
         }                                                                                       \
@@ -702,7 +698,8 @@ void Reader::_init_conditions_param(const ReaderParams& read_params) {
             predicate = new PREDICATE<StringValue>(index, value, opposite);                     \
             break;                                                                              \
         }                                                                                       \
-        case OLAP_FIELD_TYPE_VARCHAR: {                                                         \
+        case OLAP_FIELD_TYPE_VARCHAR:                                                           \
+        case OLAP_FIELD_TYPE_STRING: {                                                          \
             StringValue value;                                                                  \
             int32_t length = cond.length();                                                     \
             char* buffer = reinterpret_cast<char*>(_predicate_mem_pool->allocate(length));      \
@@ -723,9 +720,19 @@ void Reader::_init_conditions_param(const ReaderParams& read_params) {
             break;                                                                              \
         }                                                                                       \
         case OLAP_FIELD_TYPE_BOOL: {                                                            \
-            std::stringstream ss(cond);                                                         \
+            int32_t ivalue = 0;                                                                 \
+            auto result = std::from_chars(cond.data(), cond.data() + cond.size(), ivalue);      \
             bool value = false;                                                                 \
-            ss >> value;                                                                        \
+            if (result.ec == std::errc()) {                                                     \
+                if (ivalue == 0) {                                                              \
+                    value = false;                                                              \
+                } else {                                                                        \
+                    value = true;                                                               \
+                }                                                                               \
+            } else {                                                                            \
+                StringParser::ParseResult parse_result;                                         \
+                value = StringParser::string_to_bool(cond.data(), cond.size(), &parse_result);  \
+            }                                                                                   \
             predicate = new PREDICATE<bool>(index, value, opposite);                            \
             break;                                                                              \
         }                                                                                       \
@@ -783,10 +790,9 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
         switch (column.type()) {
         case OLAP_FIELD_TYPE_TINYINT: {
             phmap::flat_hash_set<int8_t> values;
+            int8_t value = 0;
             for (auto& cond_val : condition.condition_values) {
-                int32_t value = 0;
-                std::stringstream ss(cond_val);
-                ss >> value;
+                std::from_chars(cond_val.data(), cond_val.data() + cond_val.size(), value);
                 values.insert(value);
             }
             if (condition.condition_op == "*=") {
@@ -798,10 +804,9 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
         }
         case OLAP_FIELD_TYPE_SMALLINT: {
             phmap::flat_hash_set<int16_t> values;
+            int16_t value = 0;
             for (auto& cond_val : condition.condition_values) {
-                int16_t value = 0;
-                std::stringstream ss(cond_val);
-                ss >> value;
+                std::from_chars(cond_val.data(), cond_val.data() + cond_val.size(), value);
                 values.insert(value);
             }
             if (condition.condition_op == "*=") {
@@ -813,10 +818,9 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
         }
         case OLAP_FIELD_TYPE_INT: {
             phmap::flat_hash_set<int32_t> values;
+            int32_t value = 0;
             for (auto& cond_val : condition.condition_values) {
-                int32_t value = 0;
-                std::stringstream ss(cond_val);
-                ss >> value;
+                std::from_chars(cond_val.data(), cond_val.data() + cond_val.size(), value);
                 values.insert(value);
             }
             if (condition.condition_op == "*=") {
@@ -828,10 +832,9 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
         }
         case OLAP_FIELD_TYPE_BIGINT: {
             phmap::flat_hash_set<int64_t> values;
+            int64_t value = 0;
             for (auto& cond_val : condition.condition_values) {
-                int64_t value = 0;
-                std::stringstream ss(cond_val);
-                ss >> value;
+                std::from_chars(cond_val.data(), cond_val.data() + cond_val.size(), value);
                 values.insert(value);
             }
             if (condition.condition_op == "*=") {
@@ -843,10 +846,10 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
         }
         case OLAP_FIELD_TYPE_LARGEINT: {
             phmap::flat_hash_set<int128_t> values;
+            int128_t value = 0;
+            StringParser::ParseResult result;
             for (auto& cond_val : condition.condition_values) {
-                int128_t value = 0;
-                std::stringstream ss(cond_val);
-                ss >> value;
+                value = StringParser::string_to_int<__int128>(cond_val.c_str(), cond_val.size(), &result);
                 values.insert(value);
             }
             if (condition.condition_op == "*=") {
@@ -889,7 +892,8 @@ ColumnPredicate* Reader::_parse_to_predicate(const TCondition& condition, bool o
             }
             break;
         }
-        case OLAP_FIELD_TYPE_VARCHAR: {
+        case OLAP_FIELD_TYPE_VARCHAR:
+        case OLAP_FIELD_TYPE_STRING:{
             phmap::flat_hash_set<StringValue> values;
             for (auto& cond_val : condition.condition_values) {
                 StringValue value;
@@ -991,7 +995,7 @@ void Reader::_init_load_bf_columns(const ReaderParams& read_params) {
         return;
     }
     FieldType type = _tablet->tablet_schema().column(max_equal_index).type();
-    if (type != OLAP_FIELD_TYPE_VARCHAR || max_equal_index + 1 > _tablet->num_short_key_columns()) {
+    if ((type != OLAP_FIELD_TYPE_VARCHAR && type != OLAP_FIELD_TYPE_STRING)|| max_equal_index + 1 > _tablet->num_short_key_columns()) {
         _load_bf_columns.erase(max_equal_index);
     }
 }

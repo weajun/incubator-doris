@@ -102,6 +102,8 @@ public class MetaWriter {
             checksum = catalog.saveResources(dos, checksum);
             metaIndices.add(new MetaIndex("exportJob", dos.getCount()));
             checksum = catalog.saveExportJob(dos, checksum);
+            metaIndices.add(new MetaIndex("syncJob", dos.getCount()));
+            checksum = catalog.saveSyncJobs(dos, checksum);
             metaIndices.add(new MetaIndex("backupHandler", dos.getCount()));
             checksum = catalog.saveBackupHandler(dos, checksum);
             metaIndices.add(new MetaIndex("paloAuth", dos.getCount()));
@@ -120,6 +122,8 @@ public class MetaWriter {
             checksum = catalog.savePlugins(dos, checksum);
             metaIndices.add(new MetaIndex("deleteHandler", dos.getCount()));
             checksum = catalog.saveDeleteHandler(dos, checksum);
+            metaIndices.add(new MetaIndex("sqlBlockRule", dos.getCount()));
+            checksum = catalog.saveSqlBlockRule(dos, checksum);
         }
         MetaFooter.write(imageFile, metaIndices, checksum);
 
