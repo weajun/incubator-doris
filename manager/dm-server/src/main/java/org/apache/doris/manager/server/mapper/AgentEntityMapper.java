@@ -33,9 +33,10 @@ public class AgentEntityMapper implements RowMapper<AgentEntity> {
         Integer id = resultSet.getInt("id");
         String ht = resultSet.getString("host");
         Integer pt = resultSet.getInt("port");
+        String installDir  = resultSet.getString("install_dir");
         String status = resultSet.getString("status");
         Date registerTime = resultSet.getTimestamp("register_time");
         Date lastReportedTime = resultSet.getTimestamp("last_reported_time");
-        return new AgentEntity(id, ht, pt, status, registerTime, lastReportedTime);
+        return new AgentEntity(id, ht, pt,installDir, status, registerTime, lastReportedTime);
     }
 }
