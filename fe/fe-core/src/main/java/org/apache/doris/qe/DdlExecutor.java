@@ -19,14 +19,19 @@ package org.apache.doris.qe;
 
 import org.apache.doris.analysis.AdminCancelRepairTableStmt;
 import org.apache.doris.analysis.AdminCheckTabletsStmt;
+import org.apache.doris.analysis.AdminCleanTrashStmt;
 import org.apache.doris.analysis.AdminRepairTableStmt;
 import org.apache.doris.analysis.AdminSetConfigStmt;
 import org.apache.doris.analysis.AdminSetReplicaStatusStmt;
 import org.apache.doris.analysis.AlterClusterStmt;
+import org.apache.doris.analysis.AlterColumnStatsStmt;
+import org.apache.doris.analysis.AlterDatabasePropertyStmt;
 import org.apache.doris.analysis.AlterDatabaseQuotaStmt;
 import org.apache.doris.analysis.AlterDatabaseRename;
 import org.apache.doris.analysis.AlterRoutineLoadStmt;
+import org.apache.doris.analysis.AlterSqlBlockRuleStmt;
 import org.apache.doris.analysis.AlterSystemStmt;
+import org.apache.doris.analysis.AlterTableStatsStmt;
 import org.apache.doris.analysis.AlterTableStmt;
 import org.apache.doris.analysis.AlterViewStmt;
 import org.apache.doris.analysis.BackupStmt;
@@ -45,6 +50,8 @@ import org.apache.doris.analysis.CreateRepositoryStmt;
 import org.apache.doris.analysis.CreateResourceStmt;
 import org.apache.doris.analysis.CreateRoleStmt;
 import org.apache.doris.analysis.CreateRoutineLoadStmt;
+import org.apache.doris.analysis.CreateSqlBlockRuleStmt;
+import org.apache.doris.analysis.CreateTableAsSelectStmt;
 import org.apache.doris.analysis.CreateTableLikeStmt;
 import org.apache.doris.analysis.CreateTableStmt;
 import org.apache.doris.analysis.CreateUserStmt;
@@ -60,6 +67,7 @@ import org.apache.doris.analysis.DropMaterializedViewStmt;
 import org.apache.doris.analysis.DropRepositoryStmt;
 import org.apache.doris.analysis.DropResourceStmt;
 import org.apache.doris.analysis.DropRoleStmt;
+import org.apache.doris.analysis.DropSqlBlockRuleStmt;
 import org.apache.doris.analysis.DropTableStmt;
 import org.apache.doris.analysis.DropUserStmt;
 import org.apache.doris.analysis.GrantStmt;
@@ -119,6 +127,8 @@ public class DdlExecutor {
             catalog.createTable((CreateTableStmt) ddlStmt);
         } else if (ddlStmt instanceof CreateTableLikeStmt) {
             catalog.createTableLike((CreateTableLikeStmt) ddlStmt);
+        } else if (ddlStmt instanceof CreateTableAsSelectStmt) {
+            catalog.createTableAsSelect((CreateTableAsSelectStmt) ddlStmt);
         } else if (ddlStmt instanceof DropTableStmt) {
             catalog.dropTable((DropTableStmt) ddlStmt);
         } else if (ddlStmt instanceof CreateMaterializedViewStmt) {
@@ -127,6 +137,10 @@ public class DdlExecutor {
             catalog.dropMaterializedView((DropMaterializedViewStmt) ddlStmt);
         } else if (ddlStmt instanceof AlterTableStmt) {
             catalog.alterTable((AlterTableStmt) ddlStmt);
+        } else if (ddlStmt instanceof AlterTableStatsStmt) {
+            catalog.getStatisticsManager().alterTableStatistics((AlterTableStatsStmt) ddlStmt);
+        } else if (ddlStmt instanceof AlterColumnStatsStmt) {
+            catalog.getStatisticsManager().alterColumnStatistics((AlterColumnStatsStmt) ddlStmt);
         } else if (ddlStmt instanceof AlterViewStmt) {
             catalog.alterView((AlterViewStmt) ddlStmt);
         } else if (ddlStmt instanceof CancelAlterTableStmt) {
@@ -260,6 +274,16 @@ public class DdlExecutor {
             catalog.getSyncJobManager().pauseSyncJob((PauseSyncJobStmt) ddlStmt);
         } else if (ddlStmt instanceof StopSyncJobStmt) {
             catalog.getSyncJobManager().stopSyncJob((StopSyncJobStmt) ddlStmt);
+        } else if (ddlStmt instanceof AdminCleanTrashStmt) {
+            catalog.cleanTrash((AdminCleanTrashStmt) ddlStmt);
+        } else if (ddlStmt instanceof CreateSqlBlockRuleStmt) {
+            catalog.getSqlBlockRuleMgr().createSqlBlockRule((CreateSqlBlockRuleStmt) ddlStmt);
+        } else if (ddlStmt instanceof AlterSqlBlockRuleStmt) {
+            catalog.getSqlBlockRuleMgr().alterSqlBlockRule((AlterSqlBlockRuleStmt) ddlStmt);
+        } else if (ddlStmt instanceof DropSqlBlockRuleStmt) {
+            catalog.getSqlBlockRuleMgr().dropSqlBlockRule((DropSqlBlockRuleStmt) ddlStmt);
+        } else if (ddlStmt instanceof AlterDatabasePropertyStmt) {
+            throw new DdlException("Not implemented yet");
         } else {
             throw new DdlException("Unknown statement.");
         }

@@ -56,6 +56,8 @@ IBloomFilterFuncBase* IBloomFilterFuncBase::create_bloom_filter(MemTracker* trac
         return new BloomFilterFunc<TYPE_CHAR, CurrentBloomFilterAdaptor>(tracker);
     case TYPE_VARCHAR:
         return new BloomFilterFunc<TYPE_VARCHAR, CurrentBloomFilterAdaptor>(tracker);
+    case TYPE_STRING:
+        return new BloomFilterFunc<TYPE_STRING, CurrentBloomFilterAdaptor>(tracker); 
     default:
         return nullptr;
     }
@@ -71,7 +73,7 @@ BloomFilterPredicate::BloomFilterPredicate(const TExprNode& node)
           _scan_rows(0) {}
 
 BloomFilterPredicate::~BloomFilterPredicate() {
-    LOG(INFO) << "bloom filter rows:" << _filtered_rows << ",scan_rows:" << _scan_rows
+    VLOG_NOTICE << "bloom filter rows:" << _filtered_rows << ",scan_rows:" << _scan_rows
               << ",rate:" << (double)_filtered_rows / _scan_rows;
 }
 

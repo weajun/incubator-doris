@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <memory>
 #include <queue>
 #include <set>
@@ -44,6 +45,8 @@ class Bitmap;
 class MemTracker;
 class RuntimeProfile;
 class RowDescriptor;
+class ThreadPool;
+class ThreadPoolToken;
 class Tuple;
 class TupleDescriptor;
 class ExprContext;
@@ -58,12 +61,12 @@ struct AddBatchCounter {
     // total execution time of a add_batch rpc
     int64_t add_batch_execution_time_us = 0;
     // lock waiting time in a add_batch rpc
-    int64_t add_batch_wait_lock_time_us = 0;
+    int64_t add_batch_wait_execution_time_us = 0;
     // number of add_batch call
     int64_t add_batch_num = 0;
     AddBatchCounter& operator+=(const AddBatchCounter& rhs) {
         add_batch_execution_time_us += rhs.add_batch_execution_time_us;
-        add_batch_wait_lock_time_us += rhs.add_batch_wait_lock_time_us;
+        add_batch_wait_execution_time_us += rhs.add_batch_wait_execution_time_us;
         add_batch_num += rhs.add_batch_num;
         return *this;
     }
@@ -162,14 +165,16 @@ public:
     Status mark_close();
     Status close_wait(RuntimeState* state);
 
-    void cancel();
+    void cancel(const std::string& cancel_msg);
 
     // return:
     // 0: stopped, send finished(eos request has been sent), or any internal error;
     // 1: running, haven't reach eos.
     // only allow 1 rpc in flight
     // plz make sure, this func should be called after open_wait().
-    int try_send_and_fetch_status();
+    int try_send_and_fetch_status(std::unique_ptr<ThreadPoolToken>& thread_pool_token);
+
+    void try_send_batch();
 
     void time_report(std::unordered_map<int64_t, AddBatchCounter>* add_batch_counter_map,
                      int64_t* serialize_batch_ns, int64_t* mem_exceeded_block_ns,
@@ -187,14 +192,19 @@ public:
     }
 
     int64_t node_id() const { return _node_id; }
-    const NodeInfo* node_info() const { return _node_info; }
-    std::string print_load_info() const { return _load_info; }
     std::string name() const { return _name; }
 
     Status none_of(std::initializer_list<bool> vars);
 
     // TODO(HW): remove after mem tracker shared
     void clear_all_batches();
+
+    std::string channel_info() const {
+        // FIXME(cmy): There is a problem that when calling node_info, the node_info seems not initialized.
+        //             But I don't know why. so here I print node_info->id instead of node_info->host
+        //             to avoid BE crash. It needs further observation.
+        return fmt::format("{}, {}, node={}:{}", _name, _load_info, _node_info->id, _node_info->brpc_port);
+    } 
 
 private:
     void _cancel_with_msg(const std::string& msg);
@@ -226,6 +236,8 @@ private:
 
     // add batches finished means the last rpc has be response, used to check whether this channel can be closed
     std::atomic<bool> _add_batches_finished{false};
+
+    std::atomic<bool> _last_patch_processed_finished{true};
 
     bool _eos_is_produced{false}; // only for restricting producer behaviors
 
@@ -374,6 +386,7 @@ private:
 
     CountDownLatch _stop_background_threads_latch;
     scoped_refptr<Thread> _sender_thread;
+    std::unique_ptr<ThreadPoolToken> _send_batch_thread_pool_token;
 
     std::vector<DecimalV2Value> _max_decimalv2_val;
     std::vector<DecimalV2Value> _min_decimalv2_val;
@@ -410,7 +423,8 @@ private:
     // the timeout of load channels opened by this tablet sink. in second
     int64_t _load_channel_timeout_s = 0;
 
-    // True if this sink has been closed once
+    int32_t _send_batch_parallelism = 1;
+    // True if this sink has been closed once bool
     bool _is_closed = false;
     // Save the status of close() method
     Status _close_status;
