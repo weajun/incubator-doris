@@ -170,6 +170,10 @@ public:
     // start all background threads. This should be call after env is ready.
     Status start_bg_threads();
 
+    // clear trash and snapshot file
+    // option: update disk usage after sweep
+    OLAPStatus start_trash_sweep(double* usage, bool ignore_guard = false);
+
     void stop();
 
     void create_cumulative_compaction(TabletSharedPtr best_tablet,
@@ -183,6 +187,9 @@ public:
 
     std::shared_ptr<MemTracker> tablet_mem_tracker() { return _tablet_mem_tracker; }
     std::shared_ptr<MemTracker> schema_change_mem_tracker() { return _schema_change_mem_tracker; }
+
+    // check cumulative compaction config
+    void check_cumulative_compaction_config();
 
 private:
     // Instance should be inited from `static open()`
@@ -214,9 +221,6 @@ private:
     // unused rowset monitor thread
     void _unused_rowset_monitor_thread_callback();
 
-    // check cumulative compaction config
-    void _check_cumulative_compaction_config();
-
     // garbage sweep thread process function. clear snapshot and trash folder
     void _garbage_sweeper_thread_callback();
 
@@ -236,14 +240,12 @@ private:
     // parse the default rowset type config to RowsetTypePB
     void _parse_default_rowset_type();
 
-    void _start_clean_fd_cache();
+    void _start_clean_cache();
 
-    // 清理trash和snapshot文件，返回清理后的磁盘使用量
-    OLAPStatus _start_trash_sweep(double* usage);
-    // 磁盘状态监测。监测unused_flag路劲新的对应root_path unused标识位，
-    // 当检测到有unused标识时，从内存中删除对应表信息，磁盘数据不动。
-    // 当磁盘状态为不可用，但未检测到unused标识时，需要从root_path上
-    // 重新加载数据。
+    // Disk status monitoring. Monitoring unused_flag Road King's new corresponding root_path unused flag,
+    // When the unused mark is detected, the corresponding table information is deleted from the memory, and the disk data does not move.
+    // When the disk status is unusable, but the unused logo is not detected, you need to download it from root_path
+    // Reload the data.
     void _start_disk_stat_monitor();
 
     void _compaction_tasks_producer_callback();
@@ -263,7 +265,7 @@ private:
     struct CompactionCandidate {
         CompactionCandidate(uint32_t nicumulative_compaction_, int64_t tablet_id_, uint32_t index_)
                 : nice(nicumulative_compaction_), tablet_id(tablet_id_), disk_index(index_) {}
-        uint32_t nice; // 优先度
+        uint32_t nice; // priority
         int64_t tablet_id;
         uint32_t disk_index = -1;
     };
@@ -291,6 +293,7 @@ private:
 
     EngineOptions _options;
     std::mutex _store_lock;
+    std::mutex _trash_sweep_lock;
     std::map<std::string, DataDir*> _store_map;
     uint32_t _available_storage_medium_type_count;
 

@@ -24,6 +24,7 @@ import org.apache.doris.analysis.UserIdentity;
 import org.apache.doris.backup.BackupJob;
 import org.apache.doris.backup.Repository;
 import org.apache.doris.backup.RestoreJob;
+import org.apache.doris.blockrule.SqlBlockRule;
 import org.apache.doris.catalog.BrokerMgr;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.EncryptKey;
@@ -47,7 +48,6 @@ import org.apache.doris.load.loadv2.LoadJob.LoadJobStateUpdateInfo;
 import org.apache.doris.load.loadv2.LoadJobFinalOperation;
 import org.apache.doris.load.routineload.RoutineLoadJob;
 import org.apache.doris.load.sync.SyncJob;
-import org.apache.doris.master.Checkpoint;
 import org.apache.doris.mysql.privilege.UserPropertyInfo;
 import org.apache.doris.persist.AlterRoutineLoadJobOperationLog;
 import org.apache.doris.persist.AlterViewInfo;
@@ -66,12 +66,14 @@ import org.apache.doris.persist.DropInfo;
 import org.apache.doris.persist.DropLinkDbAndUpdateDbInfo;
 import org.apache.doris.persist.DropPartitionInfo;
 import org.apache.doris.persist.DropResourceOperationLog;
+import org.apache.doris.persist.DropSqlBlockRuleOperationLog;
 import org.apache.doris.persist.GlobalVarPersistInfo;
 import org.apache.doris.persist.HbPackage;
 import org.apache.doris.persist.LdapInfo;
 import org.apache.doris.persist.ModifyCommentOperationLog;
 import org.apache.doris.persist.ModifyPartitionInfo;
 import org.apache.doris.persist.ModifyTableDefaultDistributionBucketNumOperationLog;
+import org.apache.doris.persist.ModifyTableEngineOperationLog;
 import org.apache.doris.persist.ModifyTablePropertyOperationLog;
 import org.apache.doris.persist.OperationType;
 import org.apache.doris.persist.PartitionPersistInfo;
@@ -104,7 +106,7 @@ import java.io.IOException;
 
 // this is the value written to bdb or local edit files. key is an auto-increasing long.
 public class JournalEntity implements Writable {
-    public static final Logger LOG = LogManager.getLogger(Checkpoint.class);
+    public static final Logger LOG = LogManager.getLogger(JournalEntity.class);
 
     private short opCode;
     private Writable data;
@@ -201,8 +203,7 @@ public class JournalEntity implements Writable {
                 break;
             }
             case OperationType.OP_MODIFY_PARTITION: {
-                data = new ModifyPartitionInfo();
-                ((ModifyPartitionInfo) data).readFields(in);
+                data = ModifyPartitionInfo.read(in);
                 isRead = true;
                 break;
             }
@@ -293,8 +294,7 @@ public class JournalEntity implements Writable {
                 break;
             }
             case OperationType.OP_EXPORT_CREATE:
-                data = new ExportJob();
-                ((ExportJob) data).readFields(in);
+                data = ExportJob.read(in);
                 isRead = true;
                 break;
             case OperationType.OP_EXPORT_UPDATE_STATE:
@@ -317,6 +317,7 @@ public class JournalEntity implements Writable {
             }
             case OperationType.OP_ADD_BACKEND:
             case OperationType.OP_DROP_BACKEND:
+            case OperationType.OP_MODIFY_BACKEND:
             case OperationType.OP_BACKEND_STATE_CHANGE: {
                 data = Backend.read(in);
                 isRead = true;
@@ -468,8 +469,7 @@ public class JournalEntity implements Writable {
             case OperationType.OP_COLOCATE_BACKENDS_PER_BUCKETSEQ:
             case OperationType.OP_COLOCATE_MARK_UNSTABLE:
             case OperationType.OP_COLOCATE_MARK_STABLE: {
-                data = new ColocatePersistInfo();
-                ((ColocatePersistInfo) data).readFields(in);
+                data = ColocatePersistInfo.read(in);
                 isRead = true;
                 break;
             }
@@ -635,6 +635,26 @@ public class JournalEntity implements Writable {
             }
             case OperationType.OP_REPLACE_TABLE: {
                 data = ReplaceTableOperationLog.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_CREATE_SQL_BLOCK_RULE: {
+                data = SqlBlockRule.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_ALTER_SQL_BLOCK_RULE: {
+                data = SqlBlockRule.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_DROP_SQL_BLOCK_RULE: {
+                data = DropSqlBlockRuleOperationLog.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_MODIFY_TABLE_ENGINE: {
+                data = ModifyTableEngineOperationLog.read(in);
                 isRead = true;
                 break;
             }

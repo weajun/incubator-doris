@@ -34,11 +34,11 @@ int RawValue::compare(const void* v1, const void* v2, const TypeDescriptor& type
     int64_t b1;
     int64_t b2;
 
-    if (NULL == v1 && NULL == v2) {
+    if (nullptr == v1 && nullptr == v2) {
         return 0;
-    } else if (NULL == v1 && NULL != v2) {
+    } else if (nullptr == v1 && nullptr != v2) {
         return -1;
-    } else if (NULL != v1 && NULL == v2) {
+    } else if (nullptr != v1 && nullptr == v2) {
         return 1;
     }
 
@@ -80,6 +80,7 @@ int RawValue::compare(const void* v1, const void* v2, const TypeDescriptor& type
     case TYPE_CHAR:
     case TYPE_VARCHAR:
     case TYPE_HLL:
+    case TYPE_STRING:
         string_value1 = reinterpret_cast<const StringValue*>(v1);
         string_value2 = reinterpret_cast<const StringValue*>(v2);
         return string_value1->compare(*string_value2);

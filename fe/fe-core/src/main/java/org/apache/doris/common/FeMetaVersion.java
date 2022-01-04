@@ -218,6 +218,10 @@ public final class FeMetaVersion {
     public static final int VERSION_102 = 102;
     // support sync job
     public static final int VERSION_103 = 103;
+    // add sql block rule to deny specified sql
+    public static final int VERSION_104 = 104;
+    // change replica to replica allocation
+    public static final int VERSION_105 = 105;
     // note: when increment meta version, should assign the latest version to VERSION_CURRENT
-    public static final int VERSION_CURRENT = VERSION_103;
+    public static final int VERSION_CURRENT = VERSION_105;
 }

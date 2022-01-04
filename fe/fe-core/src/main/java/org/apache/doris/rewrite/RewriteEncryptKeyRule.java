@@ -31,12 +31,12 @@ import org.apache.logging.log4j.Logger;
  * rewrite EncryptKey to LiteralExpr
  */
 public class RewriteEncryptKeyRule implements ExprRewriteRule {
-    private static final Logger LOG = LogManager.getLogger(FoldConstantsRule.class);
+    private static final Logger LOG = LogManager.getLogger(RewriteEncryptKeyRule.class);
 
     public static ExprRewriteRule INSTANCE = new RewriteEncryptKeyRule();
 
     @Override
-    public Expr apply(Expr expr, Analyzer analyzer) throws AnalysisException {
+    public Expr apply(Expr expr, Analyzer analyzer, ExprRewriter.ClauseType clauseType) throws AnalysisException {
         if (expr instanceof EncryptKeyRef) {
             // rewrite encryptKey to stringLiteral
             EncryptKey encryptKey = ((EncryptKeyRef) expr).getEncryptKey();

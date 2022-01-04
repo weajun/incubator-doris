@@ -24,14 +24,14 @@ under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.apache</groupId>
-        <artifactId>doris-fe</artifactId>
-        <version>3.4.0</version>
+        <groupId>org.apache.doris</groupId>
+        <version>${revision}</version>
+        <artifactId>fe</artifactId>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>doris-fe-common</artifactId>
-    <version>1.0.0</version>
+    <artifactId>fe-common</artifactId>
+    <version>${revision}</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -66,12 +66,6 @@ under the License.
             <artifactId>guava</artifactId>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.thrift/libfb303 -->
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libfb303</artifactId>
-            <type>pom</type>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.thrift/libthrift -->
         <dependency>
             <groupId>org.apache.thrift</groupId>
@@ -93,6 +87,16 @@ under the License.
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.roaringbitmap</groupId>
+            <artifactId>RoaringBitmap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

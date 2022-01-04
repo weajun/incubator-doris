@@ -1,21 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache</groupId>
+        <artifactId>apache</artifactId>
+        <version>18</version>
+    </parent>
+    <groupId>org.apache.doris</groupId>
+    <artifactId>doris-flink-connector</artifactId>
+    <version>flink-${flink.version}-${scala.version}-SNAPSHOT</version>
+    <name>Doris Flink Connector</name>
+    <url>https://doris.apache.org/</url>
+    <licenses>
+        <license>
+            <name>Apache 2.0 License</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:git@github.com:apache/incubator-doris.git</connection>
+        <developerConnection>scm:git:git@github.com:apache/incubator-doris.git</developerConnection>
+        <url>scm:git:git@github.com:apache/incubator-doris.git</url>
+        <tag>HEAD</tag>
+    </scm>
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/apache/incubator-doris/issues</url>
+    </issueManagement>
 
-    <groupId>org.apache</groupId>
-    <artifactId>doris-flink</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <mailingLists>
+        <mailingList>
+            <name>Dev Mailing List</name>
+            <post>dev@doris.apache.org</post>
+            <subscribe>dev-subscribe@doris.apache.org</subscribe>
+            <unsubscribe>dev-unsubscribe@doris.apache.org</unsubscribe>
+        </mailingList>
 
+        <mailingList>
+            <name>Commits Mailing List</name>
+            <post>commits@doris.apache.org</post>
+            <subscribe>commits-subscribe@doris.apache.org</subscribe>
+            <unsubscribe>commits-unsubscribe@doris.apache.org</unsubscribe>
+        </mailingList>
+    </mailingLists>
     <properties>
         <scala.version>2.12</scala.version>
         <flink.version>1.11.2</flink.version>
-        <libthrift.version>0.9.3</libthrift.version>
-        <arrow.version>0.15.1</arrow.version>
+        <libthrift.version>0.13.0</libthrift.version>
+        <arrow.version>5.0.0</arrow.version>
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <maven-javadoc-plugin.version>3.3.0</maven-javadoc-plugin.version>
+        <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <doris.home>${basedir}/../../</doris.home>
-        <doris.thirdparty>${basedir}/../../thirdparty</doris.thirdparty>
+        <doris.thirdparty>${env.DORIS_THIRDPARTY}</doris.thirdparty>
     </properties>
 
     <profiles>
@@ -115,11 +175,32 @@
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
             <version>${libthrift.version}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>httpclient</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>httpcore</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
             <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-netty</artifactId>
+            <version>${arrow.version}</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -178,6 +259,7 @@
                 <version>0.1.11</version>
                 <configuration>
                     <thriftExecutable>${doris.thirdparty}/installed/bin/thrift</thriftExecutable>
+                    <generator>java:fullcamel</generator>
                 </configuration>
                 <executions>
                     <execution>
@@ -262,13 +344,15 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.7.8</version>
                 <configuration>
                     <excludes>
-                        <exclude>**/thrift/**</exclude></excludes>
+                        <exclude>**/thrift/**</exclude>
+                    </excludes>
                 </configuration>
                 <executions>
                     <execution>
@@ -292,14 +376,49 @@
                     </execution>
                 </executions>
             </plugin>
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <source>8</source>
                     <target>8</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <configuration>
+                    <source>8</source>
+                    <failOnError>false</failOnError>
+                    <aggregate>true</aggregate>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven-source-plugin.version}</version>
+                <configuration>
+                    <attach>true</attach>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

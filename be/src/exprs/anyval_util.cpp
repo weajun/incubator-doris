@@ -39,7 +39,7 @@ Status allocate_any_val(RuntimeState* state, MemPool* pool, const TypeDescriptor
     const int anyval_size = AnyValUtil::any_val_size(type);
     const int anyval_alignment = AnyValUtil::any_val_alignment(type);
     *result = reinterpret_cast<AnyVal*>(pool->try_allocate_aligned(anyval_size, anyval_alignment));
-    if (*result == NULL) {
+    if (*result == nullptr) {
         return pool->mem_tracker()->MemLimitExceeded(state, mem_limit_exceeded_msg, anyval_size);
     }
     memset(static_cast<void*>(*result), 0, anyval_size);
@@ -80,6 +80,7 @@ AnyVal* create_any_val(ObjectPool* pool, const TypeDescriptor& type) {
     case TYPE_HLL:
     case TYPE_VARCHAR:
     case TYPE_OBJECT:
+    case TYPE_STRING:
         return pool->add(new StringVal);
 
     case TYPE_DECIMALV2:
@@ -96,7 +97,7 @@ AnyVal* create_any_val(ObjectPool* pool, const TypeDescriptor& type) {
 
     default:
         DCHECK(false) << "Unsupported type: " << type.type;
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -161,6 +162,10 @@ FunctionContext::TypeDesc AnyValUtil::column_type_to_type_desc(const TypeDescrip
         for (const auto& t : type.children) {
             out.children.push_back(column_type_to_type_desc(t));
         }
+        break;
+    case TYPE_STRING:
+        out.type = FunctionContext::TYPE_STRING;
+        out.len = type.len;
         break;
     default:
         DCHECK(false) << "Unknown type: " << type;

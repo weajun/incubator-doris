@@ -33,17 +33,19 @@ public enum AlterOpType {
     // table property
     MODIFY_TABLE_PROPERTY,
     MODIFY_TABLE_PROPERTY_SYNC, // Some operations are performed synchronously, so we distinguish them by suffix _SYNC
-    // others operation, such as add/drop backend. currently we do not care about them
+    // others operation, such as add/drop backend. currently, we do not care about them
     ALTER_OTHER,
     ENABLE_FEATURE,
     REPLACE_TABLE,
     MODIFY_DISTRIBUTION,
     MODIFY_TABLE_COMMENT,
     MODIFY_COLUMN_COMMENT,
+    MODIFY_ENGINE,
     INVALID_OP; // INVALID_OP must be the last one
 
     // true means 2 operations have no conflict.
     public static Boolean[][] COMPATIBILITY_MATRIX;
+
     static {
         COMPATIBILITY_MATRIX = new Boolean[INVALID_OP.ordinal() + 1][INVALID_OP.ordinal() + 1];
         for (int i = 0; i < INVALID_OP.ordinal(); i++) {

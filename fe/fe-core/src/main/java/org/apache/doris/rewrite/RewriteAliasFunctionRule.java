@@ -18,6 +18,7 @@
 package org.apache.doris.rewrite;
 
 import org.apache.doris.analysis.Analyzer;
+import org.apache.doris.analysis.CastExpr;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
 import org.apache.doris.catalog.AliasFunction;
@@ -35,11 +36,17 @@ public class RewriteAliasFunctionRule implements ExprRewriteRule{
     public static RewriteAliasFunctionRule INSTANCE = new RewriteAliasFunctionRule();
 
     @Override
-    public Expr apply(Expr expr, Analyzer analyzer) throws AnalysisException {
+    public Expr apply(Expr expr, Analyzer analyzer, ExprRewriter.ClauseType clauseType) throws AnalysisException {
         if (expr instanceof FunctionCallExpr) {
             Function fn = expr.getFn();
             if (fn instanceof AliasFunction) {
-                return ((FunctionCallExpr) expr).rewriteExpr();
+                Expr originFn = ((AliasFunction) fn).getOriginFunction();
+                if (originFn instanceof FunctionCallExpr) {
+                    return ((FunctionCallExpr) expr).rewriteExpr();
+                } else if (originFn instanceof CastExpr) {
+                    return ((CastExpr) originFn).rewriteExpr(((AliasFunction) fn).getParameters(),
+                            ((FunctionCallExpr) expr).getParams().exprs());
+                }
             }
 
         }

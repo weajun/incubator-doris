@@ -235,9 +235,14 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MIN, OLAP_FIELD_TYPE_VARCHAR>
                 memory_copy(dst_slice->data, src_slice->data, src_slice->size);
                 dst_slice->size = src_slice->size;
             }
+            dst->set_is_null(false);
         }
     }
 };
+
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MIN, OLAP_FIELD_TYPE_STRING>
+        : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_NONE, OLAP_FIELD_TYPE_VARCHAR> {};
 
 template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MIN, OLAP_FIELD_TYPE_CHAR>
@@ -312,6 +317,10 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MAX, OLAP_FIELD_TYPE_VARCHAR>
 
 template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MAX, OLAP_FIELD_TYPE_CHAR>
+        : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MAX, OLAP_FIELD_TYPE_VARCHAR> {};
+
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MAX, OLAP_FIELD_TYPE_STRING>
         : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_MAX, OLAP_FIELD_TYPE_VARCHAR> {};
 
 template <FieldType field_type>
@@ -403,6 +412,10 @@ template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE, OLAP_FIELD_TYPE_CHAR>
         : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE, OLAP_FIELD_TYPE_VARCHAR> {};
 
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE, OLAP_FIELD_TYPE_STRING>
+        : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE, OLAP_FIELD_TYPE_VARCHAR> {};
+
 // REPLACE_IF_NOT_NULL
 
 template <FieldType field_type>
@@ -413,7 +426,7 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL, field_typ
     static void update(RowCursorCell* dst, const RowCursorCell& src, MemPool* mem_pool) {
         bool src_null = src.is_null();
         if (src_null) {
-            // Ignore it if src is NULL
+            // Ignore it if src is nullptr
             return;
         }
 
@@ -428,7 +441,7 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL, OLAP_FIEL
     static void update(RowCursorCell* dst, const RowCursorCell& src, MemPool* mem_pool) {
         bool src_null = src.is_null();
         if (src_null) {
-            // Ignore it if src is NULL
+            // Ignore it if src is nullptr
             return;
         }
 
@@ -451,6 +464,12 @@ template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL, OLAP_FIELD_TYPE_CHAR>
         : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL,
                                      OLAP_FIELD_TYPE_VARCHAR> {};
+
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL, OLAP_FIELD_TYPE_STRING>
+        : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL,
+                                     OLAP_FIELD_TYPE_VARCHAR> {};
+
 // when data load, after hll_hash function, hll_union column won't be null
 // so when init, update hll, the src is not null
 template <>
@@ -468,6 +487,8 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_HLL_UNION, OLAP_FIELD_TYPE_HLL
         auto* hll = new HyperLogLog(*src_slice);
 
         dst_slice->data = reinterpret_cast<char*>(hll);
+
+        mem_pool->mem_tracker()->Consume(hll->memory_consumed());
 
         agg_pool->add(hll);
     }
@@ -496,6 +517,7 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_HLL_UNION, OLAP_FIELD_TYPE_HLL
 
         slice->data = (char*)mem_pool->allocate(hll->max_serialized_size());
         slice->size = hll->serialize((uint8_t*)slice->data);
+        hll->clear();
     }
 };
 // when data load, after bitmap_init function, bitmap_union column won't be null
@@ -550,6 +572,11 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_
 // for backward compatibility
 template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_VARCHAR>
+        : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_OBJECT> {
+};
+
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_STRING>
         : public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_OBJECT> {
 };
 

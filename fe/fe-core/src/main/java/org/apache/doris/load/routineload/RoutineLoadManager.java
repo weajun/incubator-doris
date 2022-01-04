@@ -58,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -237,10 +236,7 @@ public class RoutineLoadManager implements Writable {
             throws MetaNotFoundException, DdlException, AnalysisException {
 
         List<RoutineLoadJob> result = Lists.newArrayList();
-        Database database = Catalog.getCurrentCatalog().getDb(dbName);
-        if (database == null) {
-            ErrorReport.reportDdlException(ErrorCode.ERR_BAD_DB_ERROR, dbName);
-        }
+        Database database = Catalog.getCurrentCatalog().getDbOrDdlException(dbName);
         long dbId = database.getId();
         Map<String, List<RoutineLoadJob>> jobMap = dbToNameToRoutineLoadJob.get(dbId);
         if (jobMap == null) {
@@ -286,6 +282,11 @@ public class RoutineLoadManager implements Writable {
                         "routine load job has been paused by user").build());
             } catch (UserException e) {
                 LOG.warn("failed to pause routine load job {}", routineLoadJob.getName(), e);
+                // if user want to pause a certain job and failed, return error.
+                // if user want to pause all possible jobs, skip error jobs.
+                if (!pauseRoutineLoadStmt.isAll()) {
+                    throw e;
+                }
                 continue;
             }
         }
@@ -316,6 +317,11 @@ public class RoutineLoadManager implements Writable {
                         .build());
             } catch (UserException e) {
                 LOG.warn("failed to resume routine load job {}", routineLoadJob.getName(), e);
+                // if user want to resume a certain job and failed, return error.
+                // if user want to resume all possible jobs, skip error jobs.
+                if (!resumeRoutineLoadStmt.isAll()) {
+                    throw e;
+                }
                 continue;
             }
         }
@@ -348,7 +354,6 @@ public class RoutineLoadManager implements Writable {
         readLock();
         try {
             int result = 0;
-            updateBeIdToMaxConcurrentTasks();
             Map<Long, Integer> beIdToConcurrentTasks = getBeCurrentTasksNumMap();
             for (Map.Entry<Long, Integer> entry : beIdToMaxConcurrentTasks.entrySet()) {
                 if (beIdToConcurrentTasks.containsKey(entry.getKey())) {
@@ -421,7 +426,9 @@ public class RoutineLoadManager implements Writable {
             // 1. Find if the given BE id has available slots
             if (previoudBeId != -1L) {
                 int idleTaskNum = 0;
-                if (beIdToConcurrentTasks.containsKey(previoudBeId)) {
+                if (beIdToMaxConcurrentTasks.containsKey(previoudBeId)) {
+                    idleTaskNum = 0;
+                } else if (beIdToConcurrentTasks.containsKey(previoudBeId)) {
                     idleTaskNum = beIdToMaxConcurrentTasks.get(previoudBeId) - beIdToConcurrentTasks.get(previoudBeId);
                 } else {
                     idleTaskNum = Config.max_routine_load_task_num_per_be;
@@ -432,7 +439,6 @@ public class RoutineLoadManager implements Writable {
             }
 
             // 2. The given BE id does not have available slots, find a BE with min tasks
-            updateBeIdToMaxConcurrentTasks();
             int idleTaskNum = 0;
             long resultBeId = -1L;
             int maxIdleSlotNum = 0;
@@ -489,12 +495,8 @@ public class RoutineLoadManager implements Writable {
                 break RESULT;
             }
 
-            long dbId = 0L;
-            Database database = Catalog.getCurrentCatalog().getDb(dbFullName);
-            if (database == null) {
-                throw new MetaNotFoundException("failed to find database by dbFullName " + dbFullName);
-            }
-            dbId = database.getId();
+            Database database = Catalog.getCurrentCatalog().getDbOrMetaException(dbFullName);
+            long dbId = database.getId();
             if (!dbToNameToRoutineLoadJob.containsKey(dbId)) {
                 result = new ArrayList<>();
                 break RESULT;
@@ -555,13 +557,12 @@ public class RoutineLoadManager implements Writable {
         }
     }
 
-    public boolean checkTaskInJob(UUID taskId) {
-        for (RoutineLoadJob routineLoadJob : idToRoutineLoadJob.values()) {
-            if (routineLoadJob.containsTask(taskId)) {
-                return true;
-            }
+    public boolean checkTaskInJob(RoutineLoadTaskInfo task) {
+        RoutineLoadJob routineLoadJob = idToRoutineLoadJob.get(task.getJobId());
+        if (routineLoadJob == null) {
+            return false;
         }
-        return false;
+        return routineLoadJob.containsTask(task.getId());
     }
 
     public List<RoutineLoadJob> getRoutineLoadJobByState(Set<RoutineLoadJob.JobState> desiredStates) {

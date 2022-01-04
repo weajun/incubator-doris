@@ -46,6 +46,7 @@ enum TStorageType {
 enum TStorageMedium {
     HDD,
     SSD,
+    S3,
 }
 
 enum TVarType {
@@ -77,7 +78,9 @@ enum TPrimitiveType {
   OBJECT,
   ARRAY,
   MAP,
-  STRUCT
+  STRUCT,
+  STRING,
+  ALL
 }
 
 enum TTypeNodeType {
@@ -420,6 +423,11 @@ enum TMergeType {
   APPEND,
   MERGE,
   DELETE
+}
+
+enum TSortType {
+    LEXICAL,
+    ZORDER, 
 }
 
 // represent a user identity

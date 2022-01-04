@@ -30,6 +30,8 @@ ROOT=`cd "$ROOT"; pwd`
 
 export DORIS_HOME=${ROOT}/../../
 
+. ${DORIS_HOME}/env.sh
+
 # include custom environment variables
 if [[ -f ${DORIS_HOME}/custom_env.sh ]]; then
     . ${DORIS_HOME}/custom_env.sh
@@ -45,12 +47,12 @@ if ! ${MVN_CMD} --version; then
     exit 1
 fi
 export MVN_CMD
-
+rm -rf output/
 ${MVN_CMD} clean package
 
 
 mkdir -p output/
-cp target/doris-flink-1.0-SNAPSHOT.jar ./output/
+cp target/doris-flink-*.jar ./output/
 
 echo "*****************************************"
 echo "Successfully build Flink-Doris-Connector"
